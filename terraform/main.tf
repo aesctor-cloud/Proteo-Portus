@@ -4,8 +4,6 @@ module "bucket" {
 
 module "lambdas_functions" {
   source          = "./Modulos/lambdas_functions"
-  # bucket_arn     = module.bucket.arn
-  # bucket_name = module.bucket.bucket_name
   arn_role_lambda = var.arn_role_lambda
   subnet_a_id = module.vpc_sg.subnet_a_id
   subnet_b_id = module.vpc_sg.subnet_b_id
@@ -22,6 +20,8 @@ module "lambdas_functions" {
   image_uri_log = module.docker_push_log.image_uri
   image_uri_pgvector = module.docker_push_pgvector.image_uri
   image_uri_silver2gold = module.docker_push_silver2gold.image_uri
+  image_uri_inference = module.docker_push_inference.image_uri
+  image_uri_query = module.docker_push_query.image_uri
  }
 
 module "docker_push_extract"{
@@ -87,6 +87,24 @@ module "docker_push_silver2gold"{
   image_tag = "silver_to_gold"
 }
 
+module "docker_push_inference" {
+  source = "./Modulos/Docker_push"
+  repository_name = var.repo_portus
+  path_to_dockerfile = var.path_to_dockerfile_inference
+  repository_url = module.create_repo.repository_url
+  depends_on = [ module.create_repo ]
+  image_tag = "extract_inference_json"
+}
+
+module "docker_push_query" {
+  source = "./Modulos/Docker_push"
+  repository_name = var.repo_portus
+  path_to_dockerfile = var.path_to_dockerfile_query
+  repository_url = module.create_repo.repository_url
+  depends_on = [ module.create_repo ]
+  image_tag = "query_gold"
+}
+
 module "create_repo" {
   source = "./Modulos/ECR"
   repository_name = var.repo_portus
@@ -118,7 +136,7 @@ module "Step_Functions" {
 
 module "EventBridge"{
   source= "./Modulos/Event_bridge"
-  arn_bucket=module.bucket.arn
+  bucket_name = module.bucket.bucket_name
   target_arn_step_functions = module.Step_Functions.target_arn_step_functions
   lambda_function_name = "extract_and_analyze"
   event_bridge_arn = var.event_bridge_arn

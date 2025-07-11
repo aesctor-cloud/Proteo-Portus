@@ -1,5 +1,0 @@
-pandas==2.2.2
-numpy==1.26.4
-number-parser
-python-dateutil
-pycountry

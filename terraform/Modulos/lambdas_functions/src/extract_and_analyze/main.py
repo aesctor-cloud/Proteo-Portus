@@ -33,16 +33,16 @@ BRONZE_COLUMNS = [
     'currency', 'name_consultant', 'description'
 ]
 
-bedrock = boto3.client('bedrock-runtime')
+
 
 def handler(event, context):
     start_time = time.time()
     try:
         logger.info("=== Lambda STARTED ===")
 
-        record = event['Records'][0]
-        bucket_name = record['s3']['bucket']['name']
-        object_key = record['s3']['object']['key']
+        
+        bucket_name = event['detail']['bucket']['name']
+        object_key = event['detail']['object']['key']
 
         logger.info(f"Archivo recibido: {object_key} en bucket: {bucket_name}")
 

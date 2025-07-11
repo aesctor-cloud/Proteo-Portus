@@ -1,124 +1,99 @@
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel
-from typing import List, Union
-import os
-from dotenv import load_dotenv
+from models import FilterResult  # tu esquema Pydantic
+import boto3
+import json
+import re
+import logging
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-# Configura tu API Key de OpenAI
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("No se encontró OPENAI_API_KEY")
-
-# Función Lambda para extraer filtros y campos de embedding desde un prompt de usuario
-def extract_json_handler(event, context) -> dict:
-
+def handler(event, context) -> dict:
     user_prompt = event.get("prompt", "")
+    bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")  
 
-    # Definición de los modelos Pydantic para la salida estructurada
-    class Filter(BaseModel):
-        field: str
-        operator: str
-        value: Union[str, int, float]  # Removemos datetime, usaremos string para fechas ISO
-
-    class FilterResult(BaseModel):
-        filters: List[Filter]
-        embedding_fields: str
-
-    # Inicializa el modelo de lenguaje 
-    llm = ChatOpenAI(
-        temperature=0,
-        model="gpt-4o-mini",
-        api_key=api_key
-    )
-
-    # Configura el modelo para que devuelva una salida estructurada
-    model_with_schema = llm.with_structured_output(schema=FilterResult)
-
-    # Campos disponibles en la base de datos
     campos = """
     Los campos disponibles en la base de datos son:
-    - project_name (texto, para embeddings)
-    - project_description (texto, para embeddings)  
+    - name_project (texto, para embeddings)
+    - description (texto, para embeddings)  
     - country (string, para embeddings)
+    - location (string, para embeddings)
+    - client_name (texto, para embeddings)
     - start_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - end_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - year (número, para filtro)
+    - completion_date (fecha ISO, para filtro - formato YYYY-MM-DD)
     - project_type (string, para embeddings)
-    - project_value (float, para filtro)
+    - value_contract (float, para filtro)
+    - currency (string, para embeddings)
+    - name_consultant (texto, para embeddings)
     """
 
-    # Prompt para el modelo
     prompt = f"""
     {campos}
 
     INSTRUCCIONES IMPORTANTES:
-    1. SOLO usa 'filters' para campos numéricos (year, project_value) y fechas (start_date, end_date)
-    2. Para fechas, SIEMPRE convierte a formato ISO 8601 (YYYY-MM-DD). Ejemplos:
-       - "1 de enero de 2023" → "2023-01-01"
-       - "enero 2023" → "2023-01-01" (primer día del mes)
-       - "2023" → usa el campo 'year' con valor numérico 2023
-       - "antes de marzo 2024" → start_date < "2024-03-01"
-    3. Para conceptos semánticos, texto descriptivo o ubicaciones, usa 'embedding_fields'
-    4. Los embedding_fields deben ser una descripción en lenguaje natural
-    5. No incluyas países como filtros, van en embedding_fields
-    
-    EJEMPLOS DE CONVERSIÓN DE FECHAS:
-    - "iniciado el 15 de febrero de 2023" → start_date = "2023-02-15"
-    - "terminado en diciembre 2022" → end_date = "2022-12-31"
-    - "antes del 1 enero 2024" → start_date < "2024-01-01"
-    - "después de junio 2023" → start_date > "2023-06-30"
-    
-    Consulta: "{user_prompt}"
+    1. Devuelve **únicamente un JSON válido**, sin explicaciones ni texto adicional.
+    2. El JSON debe seguir este formato:
+    {{
+    "filters": [
+        {{
+        "field": "start_date",
+        "operator": ">",
+        "value": "2023-01-01"
+        }},
+        {{
+        "field": "value_contract",
+        "operator": "<",
+        "value": 5000000
+        }}
+    ],
+    "embedding_fields": "proyecto solar en Andalucía iniciado después de 2023"
+    }}
 
-    Analiza la consulta y extrae:
-    1. filters: condiciones numéricas exactas y fechas en formato ISO
-    2. embedding_fields: descripción natural para búsqueda semántica
+    3. Usa 'filters' solo para campos numéricos (`value_contract`) o fechas (`start_date`, `completion_date`)
+    4. Para fechas, convierte SIEMPRE a formato ISO 8601 (YYYY-MM-DD)
+    5. Para texto, ubicaciones o conceptos generales, usa `embedding_fields`
+    6. **No incluyas países como filtro**, van en `embedding_fields`
+
+    Consulta del usuario:
+    \"\"\"{user_prompt}\"\"\"
+
+    Devuelve solo un JSON como este, sin texto adicional.
     """
 
-    # Invoca el modelo con el prompt
-    response = model_with_schema.invoke(prompt)
-    
-    # Devuelve la respuesta como un diccionario
-    return response.model_dump()
+    body = {
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 1000,
+        "temperature": 0.2
+    }
 
-if __name__ == "__main__":
-    # Pruebas con diferentes consultas que incluyen fechas
-    test_cases = [
-        {
-            "prompt": "Proyecto de energía solar en España iniciado en 1 de enero de 2023",
-            "descripcion": "Fecha específica"
-        },
-        {
-            "prompt": "Proyectos ecológicos terminados antes del 15 de marzo de 2024",
-            "descripcion": "Fecha con operador 'antes'"
-        },
-        {
-            "prompt": "Construcciones sostenibles iniciadas después de junio 2023 en Francia",
-            "descripcion": "Fecha con operador 'después'"
-        },
-        {
-            "prompt": "Proyectos de energía renovable del año 2022 con presupuesto mayor a 100000",
-            "descripcion": "Año (no fecha específica)"
-        },
-        {
-            "prompt": "Infraestructura verde iniciada entre enero y marzo de 2023 en Alemania",
-            "descripcion": "Rango de fechas"
-        }
-    ]
+    logger.info(f"Enviando solicitud a Bedrock con prompt: {user_prompt}")
+
+    response = bedrock.invoke_model(
+        modelId="anthropic.claude-3-haiku-20240307-v1:0",
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps(body)
+    )
+
+    response_body = json.loads(response['body'].read())
+    model_output = response_body['content'][0]['text']
+    logger.info(f"Raw model output: {model_output}")
+
+    json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
+
+    if not json_match:
+        logger.error("No se encontró JSON válido en la respuesta del modelo.")
+        raise ValueError("La respuesta del modelo no contiene un JSON válido.")
+
+    try:
+        parsed_json = json.loads(json_match.group())
+        result = FilterResult.model_validate(parsed_json)
+        logger.info(f"Respuesta estructurada recibida: {result}")
+        return result.model_dump()
+    except Exception as e:
+        logger.exception("Error al parsear la respuesta del modelo.")
+        raise ValueError(f"Error al validar el JSON: {str(e)}")
+
     
-    for i, test_case in enumerate(test_cases, 1):
-        print(f"\n{'='*60}")
-        print(f"PRUEBA {i}: {test_case['descripcion']}")
-        print(f"Consulta: {test_case['prompt']}")
-        print("-" * 60)
-        
-        result = extract_json_handler({"prompt": test_case["prompt"]}, None)
-        body = result["body"]
-        
-        print("Filters:")
-        for filter_item in body["filters"]:
-            print(f"  - {filter_item['field']} {filter_item['operator']} {filter_item['value']}")
-        
-        print(f"Embedding fields: {body['embedding_fields']}")
