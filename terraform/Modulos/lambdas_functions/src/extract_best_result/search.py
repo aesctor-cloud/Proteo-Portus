@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def best_result_search(cursor, filters_list, embedding=None, limit=50):
     """
@@ -18,14 +22,13 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
     base_query = """
     SELECT 
         project_id,
-        project_name,
-        project_description,
+        name_project,
         country,
         start_date,
-        end_date,
-        year,
-        project_type,
-        project_value
+        completion_date,
+        value_contract,
+        client_name,
+        description
     """
     
     # Si hay embedding, agregar similitud coseno
@@ -34,12 +37,12 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
         
         base_query += f"""
-        , (embedding_vector <=> '{embedding_str}'::vector) as distance,
-        (1 - (embedding_vector <=> '{embedding_str}'::vector)) as similarity_score
+        , (embedding <=> '{embedding_str}'::vector) as distance,
+        (1 - (embedding <=> '{embedding_str}'::vector)) as similarity_score
         """
     
     # Agregar FROM tabla de proyectos (cambiar si se llama de otra forma)
-    base_query += " FROM projects"
+    base_query += " FROM gold_table"
     
     # Construir condiciones WHERE para filtros SQL
     where_conditions = []
@@ -73,17 +76,17 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
     # Ordenamiento y límite
     if embedding:
         # Si hay embedding, ordenar por similitud (menor distancia = mayor similitud)
-        base_query += " ORDER BY embedding_vector <=> %s"
+        base_query += " ORDER BY embedding <=> %s"
         params.append(f"[{','.join(map(str, embedding))}]")
     else:
         # Sin embedding, ordenar por fecha más reciente
-        base_query += " ORDER BY COALESCE(start_date, end_date, CONCAT(year, '-01-01')::date) DESC"
+        base_query += " ORDER BY COALESCE(start_date, completion_date DESC"
     
     base_query += f" LIMIT {limit}"
     
     try:
-        print(f"Ejecutando query: {base_query}")
-        print(f"Parámetros: {params}")
+        logger.info(f"Ejecutando query: {base_query}")
+        logger.info(f"Parámetros: {params}")
         
         # Ejecutar la consulta
         cursor.execute(base_query, params)
@@ -111,7 +114,7 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
         return formatted_results, columns
         
     except Exception as e:
-        print(f"Error en best_result_search: {str(e)}")
+        logger.info(f"Error en best_result_search: {str(e)}")
         raise e
 
 def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, similarity_threshold=0.7):
@@ -125,7 +128,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         query = """
         WITH filtered_projects AS (
             SELECT *,
-                   (1 - (embedding_vector <=> %s::vector)) as similarity_score
+                   (1 - (embedding <=> %s::vector)) as similarity_score
             FROM projects
         """
         
@@ -155,10 +158,11 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         query += f"""
         )
         SELECT 
-            project_id, project_name, project_description, country,
-            start_date, end_date, year, project_type, project_value,
+            project_id, name_project, description, country,
+            start_date, completion_date, value_contract, client_name,
+            currency, 
             similarity_score
-        FROM filtered_projects
+        FROM gold_table
         WHERE similarity_score >= {similarity_threshold}
         ORDER BY similarity_score DESC
         LIMIT {limit}
@@ -168,12 +172,12 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         # Solo embeddings
         query = f"""
         SELECT 
-            project_id, project_name, project_description, country,
-            start_date, end_date, year, project_type, project_value,
-            (1 - (embedding_vector <=> %s::vector)) as similarity_score
-        FROM projects
-        WHERE (1 - (embedding_vector <=> %s::vector)) >= {similarity_threshold}
-        ORDER BY embedding_vector <=> %s::vector
+            project_id, name_project, description, country,
+            start_date, completion_date, value_contract, client_name,
+            (1 - (embedding <=> %s::vector)) as similarity_score
+        FROM gold_table
+        WHERE (1 - (embedding <=> %s::vector)) >= {similarity_threshold}
+        ORDER BY embedding <=> %s::vector
         LIMIT {limit}
         """
         embedding_str = f"[{','.join(map(str, embedding))}]"
@@ -183,9 +187,9 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         # Solo filtros SQL
         query = """
         SELECT 
-            project_id, project_name, project_description, country,
-            start_date, end_date, year, project_type, project_value
-        FROM projects
+            project_id, name_project, description, country,
+            start_date, completion_date, value_contract, client_name,
+        FROM gold_table
         """
         
         where_conditions = []
@@ -210,23 +214,23 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         if where_conditions:
             query += " WHERE " + " AND ".join(where_conditions)
         
-        query += f" ORDER BY COALESCE(start_date, end_date, CONCAT(year, '-01-01')::date) DESC LIMIT {limit}"
+        query += f" ORDER BY COALESCE(start_date, completion_date) DESC LIMIT {limit}"
         
     else:
         # Sin filtros ni embeddings - devolver proyectos más recientes
         query = f"""
         SELECT 
-            project_id, project_name, project_description, country,
-            start_date, end_date, year, project_type, project_value
-        FROM projects
-        ORDER BY COALESCE(start_date, end_date, CONCAT(year, '-01-01')::date) DESC
+            project_id, name_project, description, country,
+            start_date, completion_date, value_contract, client_name,
+        FROM gold_table
+        ORDER BY COALESCE(start_date, completion_date) DESC
         LIMIT {limit}
         """
         params = []
     
     try:
-        print(f"Query avanzada: {query}")
-        print(f"Parámetros: {params}")
+        logger.info(f"Query avanzada: {query}")
+        logger.info(f"Parámetros: {params}")
         
         cursor.execute(query, params)
         results = cursor.fetchall()
@@ -251,5 +255,5 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         return formatted_results, columns
         
     except Exception as e:
-        print(f"Error en best_result_search_advanced: {str(e)}")
+        logger.error(f"Error en best_result_search_advanced: {str(e)}")
         raise e

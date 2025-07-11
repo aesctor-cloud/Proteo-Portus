@@ -2,14 +2,18 @@ import json
 from db_conection import connect_db
 from embedding_query import generate_embedding
 from search import best_result_search, best_result_search_advanced
+import logging
 
-def search_projects_handler(event, context):
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def handler(event, context):
     """
     Lambda handler para buscar proyectos usando filtros SQL y embeddings semánticos
     """
     try:
         # Extraer user_prompt, filtros y embedding fields
-        user_prompt = event.get("user_prompt", "")
+        user_prompt = event.get("prompt", "")
         filters_list = event.get("filters", [])
         embedding_text = event.get("embedding_fields", None)
 
@@ -18,9 +22,11 @@ def search_projects_handler(event, context):
  
         if embedding_text and embedding_text.strip():
             embedding = generate_embedding(embedding_text)  # Debe devolver una lista de floats
+            logger.info(f"Embedding generado")
 
         # conectar a la base de datos
         conn = connect_db()
+        logger.info("Conexión a la base de datos establecida")
         try:
             with conn.cursor() as cur:
                 """
@@ -89,31 +95,31 @@ def search_projects_handler(event, context):
             "details": str(e)
         }
     
-if __name__ == "__main__":
-    # Pruebas con diferentes filtros y embeddings
-    test_cases = [
-        {
-            "filters": [{"field": "budget", "operator": ">", "value": 100000}],
-            "embedding_fields": "Proyectos de energía solar en España"
-        },
-        {
-            "filters": [{"field": "start_date", "operator": "<", "value": "2024-03-01"}],
-            "embedding_fields": "Proyectos ecológicos"
-        },
-        {
-            "filters": [{"field": "location", "operator": "=", "value": "Francia"}],
-            "embedding_fields": "Construcciones sostenibles iniciadas después de junio 2023"
-        }
-    ]
+# if __name__ == "__main__":
+#     # Pruebas con diferentes filtros y embeddings
+#     test_cases = [
+#         {
+#             "filters": [{"field": "budget", "operator": ">", "value": 100000}],
+#             "embedding_fields": "Proyectos de energía solar en España"
+#         },
+#         {
+#             "filters": [{"field": "start_date", "operator": "<", "value": "2024-03-01"}],
+#             "embedding_fields": "Proyectos ecológicos"
+#         },
+#         {
+#             "filters": [{"field": "location", "operator": "=", "value": "Francia"}],
+#             "embedding_fields": "Construcciones sostenibles iniciadas después de junio 2023"
+#         }
+#     ]
     
-    for i, test_case in enumerate(test_cases, 1):
-        print(f"\n{'='*60}")
-        print(f"PRUEBA {i}:")
-        print(f"Filtros: {test_case['filters']}")
-        print(f"Embedding Fields: {test_case['embedding_fields']}")
-        print("-" * 60)
+#     for i, test_case in enumerate(test_cases, 1):
+#         print(f"\n{'='*60}")
+#         print(f"PRUEBA {i}:")
+#         print(f"Filtros: {test_case['filters']}")
+#         print(f"Embedding Fields: {test_case['embedding_fields']}")
+#         print("-" * 60)
         
-        result = search_projects_handler({"body": json.dumps(test_case)}, None)
-        body = result["body"]
+#         result = search_projects_handler({"body": json.dumps(test_case)}, None)
+#         body = result["body"]
         
-        print("Resultado:", body)
+#         print("Resultado:", body)

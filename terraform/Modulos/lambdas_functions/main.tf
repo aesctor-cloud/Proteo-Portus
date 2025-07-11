@@ -28,24 +28,6 @@ resource "aws_lambda_function" "extract_function" {
 
 }
 
-# resource "aws_s3_bucket_notification" "example" {
-#   bucket = var.bucket_name
-#   lambda_function {
-#     lambda_function_arn = aws_lambda_function.extract_function.arn
-#     events              = ["s3:ObjectCreated:*"]
-#   }
-#   depends_on = [aws_lambda_permission.allow_bucket]
-
-# }
-
-# resource "aws_lambda_permission" "allow_bucket" {
-#   statement_id  = "AllowExecutionFromS3Bucket"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.extract_function.function_name
-#   principal     = "s3.amazonaws.com"
-#   source_arn    = var.bucket_arn
-# }
-
 #---------------------------------------------------------------Lambda validation function------------------------------------------------------------------------------------------------------
 
 resource "aws_lambda_function" "validation_function" {
@@ -200,5 +182,53 @@ resource "aws_lambda_function" "silver2gold" {
   }
   tags={
     Name = "silver to gold function"
+  }
+}
+
+#--------------------------------------------------------------- Extract inference function ------------------------------------------------------------------------------------------------------
+resource "aws_lambda_function" "extract_inference" {
+  function_name = "extract_inference"
+  timeout       = 200 # seconds
+  image_uri = var.image_uri_inference
+  package_type  = "Image"
+  memory_size   = 512
+
+  role = var.arn_role_lambda
+  vpc_config {
+    subnet_ids         = [var.subnet_a_id, var.subnet_b_id]
+    security_group_ids = [var.security_group_lambda]
+  }
+  tags={
+    Name = "inference function"
+  }
+
+
+}
+
+#--------------------------------------------------------------- Query function ------------------------------------------------------------------------------------------------------
+resource "aws_lambda_function" "Query_function" {
+  function_name = "query_function"
+  timeout       = 200 # seconds
+  image_uri = var.image_uri_query
+  package_type  = "Image"
+  memory_size   = 512
+
+  role = var.arn_role_lambda
+  vpc_config {
+    subnet_ids         = [var.subnet_a_id, var.subnet_b_id]
+    security_group_ids = [var.security_group_lambda]
+  }
+
+  environment {
+    variables = {
+      RDS_HOST     = var.hostname_rds
+      RDS_PORT     = var.port_rds
+      RDS_USER     = var.username_rds
+      RDS_PASSWORD = var.password_rds
+      RDS_DB       = var.database_name
+    }
+  }
+  tags={
+    Name = "query function for best result"
   }
 }

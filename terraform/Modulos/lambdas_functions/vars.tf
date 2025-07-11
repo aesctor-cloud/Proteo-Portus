@@ -3,16 +3,6 @@ variable "arn_role_lambda" {
   type        = string
 }
 
-# variable "bucket_arn" {
-#   description = "arn del bucket S3"
-#   type        = string
-# }
-
-# variable "bucket_name" {
-#   description = "Nombre del bucket S3"
-#   type        = string
-# }
-
 variable "subnet_a_id" {
   description = "Subred privada A"
   type        = string
@@ -92,5 +82,17 @@ variable "image_uri_pgvector" {
 variable "image_uri_silver2gold" {
   description = "Image of the Lambda function silvergold"
   type=string
+  
+}
+
+variable "image_uri_inference" {
+  description = "URI of the Docker image for the inference JSON Lambda function"
+  type        = string
+  
+}
+
+variable "image_uri_query" {
+  description = "URI of the Docker image for the query Lambda function"
+  type        = string
   
 }

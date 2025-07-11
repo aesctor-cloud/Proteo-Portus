@@ -1,36 +1,41 @@
 import json
 import boto3
+import logging
+import re
 
-bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")
 
 def format_projects(projects):
     lines = []
     for p in projects:
         # Genera formato que incluya nombre, código (si tiene), valor, fechas, actividades, etc.
         # Ajusta campos según tus datos reales:
-        name = p.get("nombre", "Sin nombre")
-        ref = p.get("codigo", "N/A")
-        value = p.get("valor", "N/D")
-        dates = f"{p.get('start_date', 'N/D')} – {p.get('end_date', 'N/D')}"
-        proportion = p.get("proporcion", "N/D")
-        client = p.get("cliente", "N/D")
-        country = p.get("pais", "N/D")
-        activities = p.get("actividades", [])
-        activities_str = "\n○ ".join(activities) if activities else "N/D"
+        name_project = p.get("name_project", "Sin nombre")
+        project_id = p.get("project_id", "N/A")
+        description = p.get("description", "Sin descripción")
+        value_contract = p.get("value_contract", "N/D")
+        dates = f"{p.get('start_date', 'N/D')} – {p.get('completion_date', 'N/D')}"
+        currency = p.get("currency", "N/D")
+        client_name = p.get("client_name", "N/D")
+        country = p.get("country", "N/D")
+
 
         project_str = (
-            f"[{name} ({ref})]\n"
-            f"● Valor: {value}\n"
+            f"[{name_project} ({project_id})]\n"
+            f"● Presupuesto: {value_contract}\n"
             f"● Fechas: {dates}\n"
-            f"● Proporción: {proportion}\n"
-            f"● Cliente: {client}\n"
+            f"● Moneda: {currency}\n"
+            f"● Cliente: {client_name}\n"
             f"● País: {country}\n"
-            f"● Actividades:\n○ {activities_str}"
+            f"● Descripción: {description}\n"
         )
         lines.append(project_str)
     return "\n\n".join(lines)
 
-def reason_projects_handler(event, context):
+def handler(event, context):
     try:
         # Extraer user_prompt y search_results directamente del evento
         user_prompt = event.get("user_prompt", "")
@@ -58,15 +63,15 @@ Lista de proyectos (ya filtrados por fecha y presupuesto, no es necesario evalua
 RESPONDE SOLO con el resultado final, sin explicaciones intermedias ni razonamientos visibles. 
 
 1. Para cada proyecto, provee un resumen detallado en el idioma de la consulta con un emoji (🟢/🟡/🔴) indicando si cumple con los requisitos.  
-   Si la consulta incluye criterios específicos (ej. valor, fechas, actividades), estructura cada resultado así:
+   Si la consulta incluye criterios específicos (ej. valor, fechas), estructura cada resultado así:
 
 [PROYECTO (código referencia)]  
-● Valor: [monto]  
+● Presupuesto: [monto]  
 ● Fechas: [inicio – fin]  
-● Proporción: [proporción]  
+● Moneda: [moneda]  
 ● Cliente: [nombre]  
 ● País: [nombre]  
-● Actividades:  
+● Descripción: [breve descripción del proyecto]
 ○ [lista con viñetas]  
 🟢 / 🟡 / 🔴 Evaluación final con breve justificación.
 
@@ -103,7 +108,7 @@ Proyectos:
 """
         
         response = bedrock.invoke_model(
-            modelId="anthropic.claude-3-sonnet-20240229-v1:0",
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
             body=json.dumps({
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 1200,
@@ -114,12 +119,26 @@ Proyectos:
         )
 
         response_body = json.loads(response['body'].read())
-        answer = response_body['content'][0]['text']
+        model_output = response_body['content'][0]['text']
+        logger.info(f"Raw model output: {model_output}")
 
-        return {
-            "llm_response": answer
+        json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
+
+        if not json_match:
+            logger.error("No se encontró JSON válido en la respuesta del modelo.")
+            raise ValueError("La respuesta del modelo no contiene un JSON válido.")
+
+        try:
+            parsed_json = json.loads(json_match.group())
+            logger.info(f"Respuesta estructurada recibida: {parsed_json}")
+            return {
+            "llm_response": parsed_json
         }
+        except Exception as e:
+            logger.exception("Error al parsear la respuesta del modelo.")
+            raise ValueError(f"Error al validar el JSON: {str(e)}")
 
+        
     except Exception as e:
         return {
             "error": True, 
@@ -127,38 +146,38 @@ Proyectos:
             "details": str(e)
         }
     
-if __name__ == "__main__":
-    test_event = {
-        "body": json.dumps({
-            "user_prompt": "Busco proyectos con actividades de instalación de paneles solares, duración mayor a 6 meses y cliente multinacional.",
-            "top_projects": [
-                {
-                    "nombre": "Proyecto Sol A",
-                    "codigo": "PSA001",
-                    "valor": "5M USD",
-                    "fecha_inicio": "2023-01-01",
-                    "fecha_fin": "2023-12-31",
-                    "proporcion": "100%",
-                    "cliente": "SolarCorp",
-                    "pais": "Chile",
-                    "actividades": ["Instalación de paneles solares", "Mantenimiento"]
-                },
-                {
-                    "nombre": "Proyecto Viento B",
-                    "codigo": "PVB002",
-                    "valor": "3M USD",
-                    "fecha_inicio": "2023-03-01",
-                    "fecha_fin": "2023-08-01",
-                    "proporcion": "60%",
-                    "cliente": "WindGlobal",
-                    "pais": "Argentina",
-                    "actividades": ["Construcción de torres eólicas", "Instalación de cableado"]
-                }
-            ]
-        })
-    }
+# if __name__ == "__main__":
+    # test_event = {
+    #     "body": json.dumps({
+    #         "user_prompt": "Busco proyectos con actividades de instalación de paneles solares, duración mayor a 6 meses y cliente multinacional.",
+    #         "top_projects": [
+    #             {
+    #                 "nombre": "Proyecto Sol A",
+    #                 "codigo": "PSA001",
+    #                 "valor": "5M USD",
+    #                 "fecha_inicio": "2023-01-01",
+    #                 "fecha_fin": "2023-12-31",
+    #                 "proporcion": "100%",
+    #                 "cliente": "SolarCorp",
+    #                 "pais": "Chile",
+    #                 "actividades": ["Instalación de paneles solares", "Mantenimiento"]
+    #             },
+    #             {
+    #                 "nombre": "Proyecto Viento B",
+    #                 "codigo": "PVB002",
+    #                 "valor": "3M USD",
+    #                 "fecha_inicio": "2023-03-01",
+    #                 "fecha_fin": "2023-08-01",
+    #                 "proporcion": "60%",
+    #                 "cliente": "WindGlobal",
+    #                 "pais": "Argentina",
+    #                 "actividades": ["Construcción de torres eólicas", "Instalación de cableado"]
+    #             }
+    #         ]
+    #     })
+    # }
 
-    test_context = None
+    # test_context = None
 
-    result = reason_projects_handler(test_event, test_context)
-    print(json.dumps(json.loads(result["body"]), ensure_ascii=False, indent=2))
+    # result = reason_projects_handler(test_event, test_context)
+    # print(json.dumps(json.loads(result["body"]), ensure_ascii=False, indent=2))

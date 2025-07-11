@@ -80,3 +80,15 @@ variable "event_bridge_arn" {
   type=string
   
 }
+
+variable "path_to_dockerfile_inference" {
+  description = "Path to the Dockerfile for the inference JSON lambda function"
+  type        = string
+  
+}
+
+variable "path_to_dockerfile_query" {
+  description = "Path to the Dockerfile for the query lambda function"
+  type        = string
+  
+}

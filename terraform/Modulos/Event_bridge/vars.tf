@@ -1,4 +1,4 @@
-variable "arn_bucket" {
+variable "bucket_name" {
     description = "Name of buycket raw"
     type        = string
   
