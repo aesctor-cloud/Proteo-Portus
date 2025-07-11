@@ -1,0 +1,43 @@
+# Terraform files
+*.tfstate
+*.tfvars
+*.backup
+terraform/bucket/.terraform/providers/registry.terraform.io/hashicorp/aws/5.100.0/windows_amd64/terraform-provider-aws_v5.100.0_x5.exe
+.terraform/
+
+
+# Environment variables
+.env
+
+# Virtual environments
+venv/
+.venv/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary files
+*.tmp
+*.temp
+
+# Ignora todo en esta carpeta
+terraform/Modulos/lambdas_functions/src/data_validation/*
+
+# ¡Pero no ignores la carpeta en sí!
+!terraform/Modulos/lambdas_functions/src/data_validation/
+
+# Ni estos archivos
+!terraform/Modulos/lambdas_functions/src/data_validation/main.py
+!terraform/Modulos/lambdas_functions/src/data_validation/requirements.txt
+!terraform/Modulos/lambdas_functions/src/data_validation/database.py
+!terraform/Modulos/lambdas_functions/src/data_validation/validation.py
+
