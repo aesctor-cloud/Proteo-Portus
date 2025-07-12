@@ -12,7 +12,7 @@ import re
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
-import uuid
+import hashlib
 
 # Load environment variables
 load_dotenv()
@@ -185,7 +185,7 @@ def analyze_with_bedrock(text: str, filename: str) -> Dict[str, Any]:
         json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
         if json_match:
             parsed_data = json.loads(json_match.group())
-            parsed_data['project_id']=my_id = str(uuid.uuid4())
+            parsed_data['project_id'] = generate_project_id(parsed_data)
             parsed_data['source_file'] = filename
             parsed_data['processing_timestamp'] = pd.Timestamp.now().isoformat()
             return parsed_data
@@ -246,3 +246,15 @@ def create_and_insert_table(conn, data):
         cursor.close()
         conn.close()
 
+def generate_project_id(project):
+    relevant_data = {
+        "name": project["name_project"],
+        "start_date": project["start_date"],
+        "completion_date": project["completion_date"],
+    }
+    
+    
+    string_data = json.dumps(relevant_data, sort_keys=True)
+
+    # Usa SHA256 para generar un ID único pero repetible
+    return hashlib.sha256(string_data.encode("utf-8")).hexdigest()

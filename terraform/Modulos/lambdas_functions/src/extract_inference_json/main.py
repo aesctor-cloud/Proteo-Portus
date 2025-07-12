@@ -90,8 +90,10 @@ def handler(event, context) -> dict:
     try:
         parsed_json = json.loads(json_match.group())
         result = FilterResult.model_validate(parsed_json)
+        result_dict = result.model_dump()
+        result_dict['prompt'] = user_prompt
         logger.info(f"Respuesta estructurada recibida: {result}")
-        return result.model_dump()
+        return result_dict
     except Exception as e:
         logger.exception("Error al parsear la respuesta del modelo.")
         raise ValueError(f"Error al validar el JSON: {str(e)}")

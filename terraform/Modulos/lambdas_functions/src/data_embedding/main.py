@@ -118,9 +118,13 @@ def handler(event, context):
     finally:
         conn.close()
     
-    logger.info(f"Resultados insertados en tabla oro: {resultados}")
+    logger.info(f"Resultados insertados en tabla oro: {placeholders}")
 
     return {
         "statusCode": 200,
         "body": json.dumps({"message": f"{len(resultados)} proyectos procesados."})
     }
+
+
+
+

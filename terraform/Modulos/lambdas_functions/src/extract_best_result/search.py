@@ -80,8 +80,8 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
         params.append(f"[{','.join(map(str, embedding))}]")
     else:
         # Sin embedding, ordenar por fecha más reciente
-        base_query += " ORDER BY COALESCE(start_date, completion_date DESC"
-    
+        base_query += " ORDER BY COALESCE(start_date, completion_date) DESC"
+
     base_query += f" LIMIT {limit}"
     
     try:
@@ -129,7 +129,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         WITH filtered_projects AS (
             SELECT *,
                    (1 - (embedding <=> %s::vector)) as similarity_score
-            FROM projects
+            FROM gold_table
         """
         
         # Construir filtros
@@ -154,6 +154,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         
         if where_conditions:
             query += " WHERE " + " AND ".join(where_conditions)
+            logger.info(f"querys filtros: {query}")
         
         query += f"""
         )
@@ -167,7 +168,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         ORDER BY similarity_score DESC
         LIMIT {limit}
         """
-        
+        logger.info(f"Query avanzada: {query}")
     elif embedding:
         # Solo embeddings
         query = f"""
@@ -182,13 +183,14 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         """
         embedding_str = f"[{','.join(map(str, embedding))}]"
         params = [embedding_str, embedding_str, embedding_str]
-        
+
+        logger.info(f"Query embeddings: {query}")
     elif filters_list:
         # Solo filtros SQL
         query = """
         SELECT 
             project_id, name_project, description, country,
-            start_date, completion_date, value_contract, client_name,
+            start_date, completion_date, value_contract, client_name
         FROM gold_table
         """
         
@@ -216,12 +218,13 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         
         query += f" ORDER BY COALESCE(start_date, completion_date) DESC LIMIT {limit}"
         
+        logger.info(f"Query filtros: {query}")
     else:
         # Sin filtros ni embeddings - devolver proyectos más recientes
         query = f"""
         SELECT 
             project_id, name_project, description, country,
-            start_date, completion_date, value_contract, client_name,
+            start_date, completion_date, value_contract, client_name
         FROM gold_table
         ORDER BY COALESCE(start_date, completion_date) DESC
         LIMIT {limit}

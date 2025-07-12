@@ -22,6 +22,7 @@ module "lambdas_functions" {
   image_uri_silver2gold = module.docker_push_silver2gold.image_uri
   image_uri_inference = module.docker_push_inference.image_uri
   image_uri_query = module.docker_push_query.image_uri
+  image_uri_output=module.docker_push_output.image_uri
  }
 
 module "docker_push_extract"{
@@ -103,6 +104,15 @@ module "docker_push_query" {
   repository_url = module.create_repo.repository_url
   depends_on = [ module.create_repo ]
   image_tag = "query_gold"
+}
+
+module "docker_push_output" {
+  source = "./Modulos/Docker_push"
+  repository_name = var.repo_portus
+  path_to_dockerfile = var.path_to_dockerfile_output
+  repository_url = module.create_repo.repository_url
+  depends_on = [ module.create_repo ]
+  image_tag = "output_evaluator"
 }
 
 module "create_repo" {
