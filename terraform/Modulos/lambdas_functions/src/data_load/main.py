@@ -6,10 +6,7 @@ from datetime import datetime
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+
 
 def get_db_connection():
     return psycopg2.connect(
@@ -31,12 +28,12 @@ def insert_record(cursor, record):
     INSERT INTO silver_table (
         project_id, name_project, start_date, completion_date,
         country, location, client_name, value_contract,
-        currency, name_consultant, description, processing_timestamp,
+        currency, project_field, name_consultant, description, processing_timestamp,
         normalization_timestamp, source_record_id, normalized_by_function
     ) VALUES (
         %(project_id)s, %(name_project)s, %(start_date)s, %(completion_date)s,
         %(country)s, %(location)s, %(client_name)s, %(value_contract)s,
-        %(currency)s, %(name_consultant)s, %(description)s, %(processing_timestamp)s,
+        %(currency)s, %(project_field)s, %(name_consultant)s, %(description)s, %(processing_timestamp)s,
         %(normalization_timestamp)s, %(source_record_id)s, %(normalized_by_function)s
     ) ON CONFLICT (project_id) DO NOTHING;
     """
@@ -59,6 +56,7 @@ def insert_record(cursor, record):
                 client_name TEXT,
                 value_contract NUMERIC,
                 currency TEXT,
+                project_field TEXT,
                 name_consultant TEXT,
                 description TEXT,
                 processing_timestamp TIMESTAMP,

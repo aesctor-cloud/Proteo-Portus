@@ -12,6 +12,7 @@ class ProjectRaw(BaseModel):
     country: Optional[str]
     location: Optional[str]
     client_name: Optional[str]
+    project_field: Optional[str]
     value_contract: Optional[str]
     currency: Optional[str]
     name_consultant: Optional[str]
@@ -20,6 +21,6 @@ class ProjectRaw(BaseModel):
 
     @validator('project_id', 'name_project', pre=True)
     def must_not_be_empty(cls, value):
-        if not value or value.strip() == "":
+        if not value or value.strip() == "" or value == 'N/A':
             raise ValueError("Required field is empty")
         return value

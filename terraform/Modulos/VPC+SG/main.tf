@@ -106,6 +106,17 @@ resource "aws_security_group_rule" "rds_allow_lambda" {
 
 }
 
+# resource "aws_security_group_rule" "rds_allow_bastion" {
+#   type                     = "ingress"
+#   from_port                = 5432
+#   to_port                  = 5432
+#   protocol                 = "tcp"
+#   source_security_group_id = aws_security_group.bastion_sg.id
+#   security_group_id        = aws_security_group.rds_sg.id
+#   description              = "PostgreSQL from EC2 Bastion"
+# }
+
+
 # VPC Endpoint para CloudWatch Logs
 resource "aws_vpc_endpoint" "logs" {
   vpc_id            = aws_vpc.main.id

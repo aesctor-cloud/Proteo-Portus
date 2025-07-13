@@ -96,3 +96,9 @@ variable "image_uri_query" {
   type        = string
   
 }
+
+variable "image_uri_output" {
+  description = "URI of the Docker image for the output evaluator Lambda function"
+  type        = string
+
+}

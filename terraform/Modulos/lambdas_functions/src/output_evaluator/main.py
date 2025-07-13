@@ -17,6 +17,7 @@ def format_projects(projects):
         project_id = p.get("project_id", "N/A")
         description = p.get("description", "Sin descripción")
         value_contract = p.get("value_contract", "N/D")
+        project_field = p.get("project_field", "N/D")
         dates = f"{p.get('start_date', 'N/D')} – {p.get('completion_date', 'N/D')}"
         currency = p.get("currency", "N/D")
         client_name = p.get("client_name", "N/D")
@@ -28,27 +29,30 @@ def format_projects(projects):
             f"● Presupuesto: {value_contract}\n"
             f"● Fechas: {dates}\n"
             f"● Moneda: {currency}\n"
+            f"● Campo del proyecto: {project_field}\n"
             f"● Cliente: {client_name}\n"
             f"● País: {country}\n"
             f"● Descripción: {description}\n"
         )
         lines.append(project_str)
-    return "\n\n".join(lines)
+        formatted_project = "\n\n".join(lines)
+        logger.info(f"Proyecto formateado: {formatted_project}")
+    return formatted_project
 
 def handler(event, context):
     try:
         # Extraer user_prompt y search_results directamente del evento
-        user_prompt = event.get("user_prompt", "")
-        projects = event.get("search_results", [])
+        user_prompt = event["search"]["Payload"]["user_prompt"]
+        results = event["search"]["Payload"]["search_results"]
 
-        if not user_prompt or not projects:
+        if not user_prompt or not results:
             return {
                 "error": True,
                 "message": "Faltan 'user_prompt' o 'search_results' en el evento de entrada.",
                 "details": "Input event missing required fields."
             }
 
-        projects_formatted = format_projects(projects)
+        projects_formatted = format_projects(results)
 
         prompt = f"""
 Eres un analista experto que recibe esta consulta de usuario y una lista de proyectos candidatos. 
@@ -71,6 +75,7 @@ RESPONDE SOLO con el resultado final, sin explicaciones intermedias ni razonamie
 ● Moneda: [moneda]  
 ● Cliente: [nombre]  
 ● País: [nombre]  
+● Campo del proyecto: [nombre]  
 ● Descripción: [breve descripción del proyecto]
 ○ [lista con viñetas]  
 🟢 / 🟡 / 🔴 Evaluación final con breve justificación.
@@ -104,35 +109,42 @@ NO GENERES explicaciones ni pasos intermedios. Todo razonamiento debe quedar imp
 RESPONDE SÓLO con el resultado final.
 
 Proyectos:  
-{json.dumps(projects, ensure_ascii=False)}
+{json.dumps(results, ensure_ascii=False)}
 """
-        
+        body = {
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 1000,
+        "temperature": 0.2
+        }
+
         response = bedrock.invoke_model(
-            modelId="anthropic.claude-3-haiku-20240307-v1:0",
-            body=json.dumps({
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 1200,
-                "temperature": 0.5
-            }),
-            contentType="application/json",
-            accept="application/json"
+        modelId="anthropic.claude-3-haiku-20240307-v1:0",
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps(body)
         )
+
+        logger.info(f"Enviando solicitud a Bedrock con prompt: {prompt}")
 
         response_body = json.loads(response['body'].read())
         model_output = response_body['content'][0]['text']
         logger.info(f"Raw model output: {model_output}")
 
-        json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
+        # json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
+        
 
-        if not json_match:
-            logger.error("No se encontró JSON válido en la respuesta del modelo.")
-            raise ValueError("La respuesta del modelo no contiene un JSON válido.")
+        # if not json_match:
+        #     logger.error("No se encontró JSON válido en la respuesta del modelo.")
+        #     raise ValueError("La respuesta del modelo no contiene un JSON válido.")
 
         try:
-            parsed_json = json.loads(json_match.group())
-            logger.info(f"Respuesta estructurada recibida: {parsed_json}")
+            # parsed_json = json.loads(json_match.group())
+            logger.info(f"Respuesta estructurada recibida: {model_output}")
             return {
-            "llm_response": parsed_json
+            "llm_response": model_output
         }
         except Exception as e:
             logger.exception("Error al parsear la respuesta del modelo.")

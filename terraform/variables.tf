@@ -92,3 +92,9 @@ variable "path_to_dockerfile_query" {
   type        = string
   
 }
+
+variable "path_to_dockerfile_output" {
+  description = "Path to the Dockerfile for the output evaluator lambda function"
+  type        = string
+  
+}

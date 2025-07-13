@@ -6,10 +6,6 @@ import logging
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 # AWS clients
 bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")  
@@ -32,6 +28,7 @@ def create_gold_table(conn):
                     client_name TEXT,
                     value_contract NUMERIC,
                     currency TEXT,
+                    project_field TEXT,
                     name_consultant TEXT,
                     description TEXT,
                     processing_timestamp TIMESTAMP,
@@ -118,9 +115,13 @@ def handler(event, context):
     finally:
         conn.close()
     
-    logger.info(f"Resultados insertados en tabla oro: {resultados}")
+    logger.info(f"Resultados insertados en tabla oro: {placeholders}")
 
     return {
         "statusCode": 200,
         "body": json.dumps({"message": f"{len(resultados)} proyectos procesados."})
     }
+
+
+
+

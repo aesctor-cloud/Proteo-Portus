@@ -15,6 +15,7 @@ def get_default_field_mapping() -> Dict[str, List[str]]:
         "completion_date": ["endDate", "end_date", "completion_date"],
         "currency": ["currency", "moneda"],
         "client_name": ["client", "client_name"],
+        "project_field": ["project_field", "field", "area"],
         "location": ["location", "ubicacion", "lugar"],
         "value_contract": ["value_contract", "valorProyecto", "value"],
         "description": ["description", "descripcion", "details"],

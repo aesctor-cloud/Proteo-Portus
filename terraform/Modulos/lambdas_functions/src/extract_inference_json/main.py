@@ -20,7 +20,7 @@ def handler(event, context) -> dict:
     - client_name (texto, para embeddings)
     - start_date (fecha ISO, para filtro - formato YYYY-MM-DD)
     - completion_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - project_type (string, para embeddings)
+    - project_field (string, para embeddings)
     - value_contract (float, para filtro)
     - currency (string, para embeddings)
     - name_consultant (texto, para embeddings)
@@ -90,8 +90,10 @@ def handler(event, context) -> dict:
     try:
         parsed_json = json.loads(json_match.group())
         result = FilterResult.model_validate(parsed_json)
+        result_dict = result.model_dump()
+        result_dict['prompt'] = user_prompt
         logger.info(f"Respuesta estructurada recibida: {result}")
-        return result.model_dump()
+        return result_dict
     except Exception as e:
         logger.exception("Error al parsear la respuesta del modelo.")
         raise ValueError(f"Error al validar el JSON: {str(e)}")

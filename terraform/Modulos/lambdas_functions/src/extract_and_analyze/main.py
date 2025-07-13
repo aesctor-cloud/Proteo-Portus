@@ -12,7 +12,7 @@ import re
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
-import uuid
+import hashlib
 
 # Load environment variables
 load_dotenv()
@@ -21,15 +21,11 @@ load_dotenv()
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 # Define the bronze columns structure
 BRONZE_COLUMNS = [
     'project_id', 'name_project', 'start_date', 'completion_date',
-    'country', 'location', 'client_name', 'value_contract',
+    'country', 'location', 'client_name', 'project_field', 'value_contract',
     'currency', 'name_consultant', 'description'
 ]
 
@@ -46,6 +42,9 @@ def handler(event, context):
 
         logger.info(f"Archivo recibido: {object_key} en bucket: {bucket_name}")
 
+        first_folder = object_key.split('/', 1)[0]
+        logger.info(f"La primera carpeta es: {first_folder}")
+
         s3 = boto3.resource('s3')
         obj = s3.Object(bucket_name, object_key)
 
@@ -59,7 +58,7 @@ def handler(event, context):
             for i, table in enumerate(extracted_text):
                 logger.info(f"Enviando tabla {i+1} a BedRock...")
                 t_ai = time.time()
-                analyzed_data = analyze_with_bedrock(table, object_key)
+                analyzed_data = analyze_with_bedrock(table, object_key, first_folder)
                 logger.info(f"BedRock procesó tabla {i+1} en {time.time() - t_ai:.2f}s")
                 if analyzed_data:
                     processed_data.append(analyzed_data)
@@ -129,8 +128,8 @@ def extract_text_from_docx(obj) -> list:
         return []
 
 
-def analyze_with_bedrock(text: str, filename: str) -> Dict[str, Any]:
-    
+def analyze_with_bedrock(text: str, filename: str, first_folder: str) -> Dict[str, Any]:
+
     try:
         prompt = f"""
         Analiza el siguiente texto extraído de un documento y extrae la información según las siguientes columnas:
@@ -185,7 +184,8 @@ def analyze_with_bedrock(text: str, filename: str) -> Dict[str, Any]:
         json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
         if json_match:
             parsed_data = json.loads(json_match.group())
-            parsed_data['project_id']=my_id = str(uuid.uuid4())
+            parsed_data['project_field'] = first_folder
+            parsed_data['project_id'] = generate_project_id(parsed_data)
             parsed_data['source_file'] = filename
             parsed_data['processing_timestamp'] = pd.Timestamp.now().isoformat()
             return parsed_data
@@ -222,6 +222,7 @@ def create_and_insert_table(conn, data):
                 "client_name" TEXT,
                 "value_contract" TEXT,
                 "currency" TEXT,
+                "project_field" TEXT,
                 "name_consultant" TEXT,
                 "description" TEXT,
                 "source_file" TEXT,
@@ -246,3 +247,15 @@ def create_and_insert_table(conn, data):
         cursor.close()
         conn.close()
 
+def generate_project_id(project):
+    relevant_data = {
+        "name": project["name_project"],
+        "start_date": project["start_date"],
+        "completion_date": project["completion_date"],
+    }
+    
+    
+    string_data = json.dumps(relevant_data, sort_keys=True)
+
+    # Usa SHA256 para generar un ID único pero repetible
+    return hashlib.sha256(string_data.encode("utf-8")).hexdigest()

@@ -80,7 +80,7 @@ def handler(event, context):
 
         # Devuelve los resultados
         return {
-            "user_promtp": user_prompt,
+            "user_prompt": user_prompt,
             "search_results": best_results,
             "total_results": len(best_results),
             "filters_applied": len(filters_list),

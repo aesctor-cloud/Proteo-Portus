@@ -232,3 +232,23 @@ resource "aws_lambda_function" "Query_function" {
     Name = "query function for best result"
   }
 }
+
+#--------------------------------------------------------------- output function ------------------------------------------------------------------------------------------------------
+resource "aws_lambda_function" "output_function" {
+  function_name = "output_evaluator"
+  timeout       = 200 # seconds
+  image_uri = var.image_uri_output
+  package_type  = "Image"
+  memory_size   = 512
+
+  role = var.arn_role_lambda
+  vpc_config {
+    subnet_ids         = [var.subnet_a_id, var.subnet_b_id]
+    security_group_ids = [var.security_group_lambda]
+  }
+  tags={
+    Name = "output evaluator function"
+  }
+
+
+}
