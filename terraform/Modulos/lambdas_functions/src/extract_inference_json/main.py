@@ -12,51 +12,58 @@ def handler(event, context) -> dict:
     bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")  
 
     campos = """
-    Los campos disponibles en la base de datos son:
-    - name_project (texto, para embeddings)
-    - description (texto, para embeddings)  
-    - country (string, para embeddings)
-    - location (string, para embeddings)
-    - client_name (texto, para embeddings)
-    - start_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - completion_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - project_field (string, para embeddings)
-    - value_contract (float, para filtro)
-    - currency (string, para embeddings)
-    - name_consultant (texto, para embeddings)
+    Available database fields are:
+    - project_field (string, for embeddings)
+    - name_project (text, for embeddings)
+    - start_date (ISO date, for filter - format YYYY-MM-DD)
+    - completion_date (ISO date, for filter - format YYYY-MM-DD)
+    - country (string, for embeddings)
+    - location (string, for embeddings)
+    - client_name (text, for embeddings)
+    - value_contract (float, for filter)
+    - currency (string, for embeddings)
+    - name_consultant (text, for embeddings)
+    - description (text, for embeddings)  
     """
 
     prompt = f"""
+    TASK: Extract query parameters from the user's prompt to generate a JSON structure for database filtering and embedding search.
+
+    Available fields and their types:
     {campos}
 
-    INSTRUCCIONES IMPORTANTES:
-    1. Devuelve **únicamente un JSON válido**, sin explicaciones ni texto adicional.
-    2. El JSON debe seguir este formato:
+    INPUT USER PROMPT:
+    {user_prompt}
+
+    OUTPUT FORMAT: You must return EXACTLY this JSON structure with these exact field names:
     {{
-    "filters": [
-        {{
-        "field": "start_date",
-        "operator": ">",
-        "value": "2023-01-01"
-        }},
-        {{
-        "field": "value_contract",
-        "operator": "<",
-        "value": 5000000
-        }}
-    ],
-    "embedding_fields": "proyecto solar en Andalucía iniciado después de 2023"
+        "filters": [
+            {{
+                "field": "[FIELD_NAME]",
+                "operator": "[OPERATOR]",
+                "value": "[VALUE]"
+            }}
+            // Add more filter objects if applicable
+        ],
+        "embedding_fields": "[TEXT_FOR_EMBEDDINGS]"
     }}
+    
+    VALIDATION RULES:
+    - **filters**:
+        - Only use for numeric fields (`value_contract`) or date fields (`start_date`, `completion_date`).
+        - **Dates**: Must be in YYYY-MM-DD format only. If the year is not specified in the user prompt, use "N/A" for the filter value.
+        - **Operators**: Use standard comparison operators (e.g., ">", "<", ">=", "<=", "=", "!=").
+        - **Values**: For `value_contract`, only digits, no symbols or letters.
+        - If no suitable filters are found, the `filters` array must be empty `[]`.
+    - **embedding_fields**:
+        - Use for textual descriptions, project names, countries, locations, client names, project fields, currencies, and consultant names.
+        - **Do NOT include countries as filters**; they must go into `embedding_fields`.
+        - If no relevant text for embeddings is found, use an empty string `""`.
+    - **All fields mandatory**: The `filters` array and `embedding_fields` string must always be present in the JSON.
+    - **Response language**: English only.
+    - **No text outside JSON structure**.
 
-    3. Usa 'filters' solo para campos numéricos (`value_contract`) o fechas (`start_date`, `completion_date`)
-    4. Para fechas, convierte SIEMPRE a formato ISO 8601 (YYYY-MM-DD)
-    5. Para texto, ubicaciones o conceptos generales, usa `embedding_fields`
-    6. **No incluyas países como filtro**, van en `embedding_fields`
-
-    Consulta del usuario:
-    \"\"\"{user_prompt}\"\"\"
-
-    Devuelve solo un JSON como este, sin texto adicional.
+    RESPONSE:
     """
 
     body = {
