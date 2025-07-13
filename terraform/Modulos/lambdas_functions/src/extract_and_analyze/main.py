@@ -36,7 +36,6 @@ def handler(event, context):
     try:
         logger.info("=== Lambda STARTED ===")
 
-        
         bucket_name = event['detail']['bucket']['name']
         object_key = event['detail']['object']['key']
 
@@ -132,32 +131,32 @@ def analyze_with_bedrock(text: str, filename: str, first_folder: str) -> Dict[st
 
     try:
         prompt = f"""
-        Analiza el siguiente texto extraído de un documento y extrae la información según las siguientes columnas:
+        Analyze the following text extracted from a document and extract the information according to the following columns:
 
-        Columnas requeridas: {', '.join(BRONZE_COLUMNS)}
+        Required columns: {', '.join(BRONZE_COLUMNS)}
 
-        Texto del documento:
+        Document text:
         {text}
 
-        Por favor, extrae la información y devuelve un JSON con la siguiente estructura:
+        Please extract the information and return a JSON object with the following structure:
         {{
-            "name_project": "Nombre del proyecto",
-            "start_date": "Fecha de inicio (formato YYYY-MM-DD si está disponible)",
-            "completion_date": "Fecha de finalización (formato YYYY-MM-DD si está disponible)",
-            "country": "País del proyecto",
-            "location": "Ubicación específica",
-            "client_name": "Nombre del cliente",
-            "value_contract": "Valor del contrato (solo números)",
-            "currency": "Moneda del contrato",
-            "name_consultant": "Nombre del consultor",
-            "description": "Descripción del proyecto"
+            "name_project": "Project name",
+            "start_date": "Start date (format YYYY-MM-DD if available)",
+            "completion_date": "Completion date (format YYYY-MM-DD if available)",
+            "country": "Country of the project (in English)",
+            "location": "Specific location",
+            "client_name": "Client name",
+            "value_contract": "Contract value (only numbers, no currency symbols or letters)",
+            "currency": "Contract currency",
+            "name_consultant": "Consultant name",
+            "description": "Project description"
         }}
 
-        Si alguna información no está disponible en el texto, usa "N/A" para ese campo.
-        Asegúrate de que el JSON sea válido y que todos los campos estén presentes.
-        Devuelve únicamente un objeto JSON, sin ningún texto antes o después.
+        If any information is not available in the text, use "N/A" for that field.
+        Make sure the JSON is valid and that all fields are present.
+        Return only a single JSON object, with no additional text before or after.
+        Reminder: You must respond strictly in English. Do not use any other language in your answer.
         """
-
         bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")  
 
         body = {
