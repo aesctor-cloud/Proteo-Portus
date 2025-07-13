@@ -8,10 +8,7 @@ from config.field_mapping import get_default_field_mapping
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+
 
 def normalize_unicode_and_strip(obj):
     """

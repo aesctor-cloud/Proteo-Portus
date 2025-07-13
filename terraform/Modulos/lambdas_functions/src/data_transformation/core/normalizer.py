@@ -51,6 +51,7 @@ def normalize_record(record, field_mapping):
     apply_normalization('name_consultant', clean_and_capitalize_name)
     apply_normalization('name_project', clean_and_capitalize_name)
     apply_normalization('location', clean_and_capitalize_name)
+    apply_normalization('project_field', clean_and_capitalize_name)
 
     # Normalize numerical values
     apply_normalization('value_contract', parse_value_input)

@@ -20,7 +20,7 @@ def handler(event, context) -> dict:
     - client_name (texto, para embeddings)
     - start_date (fecha ISO, para filtro - formato YYYY-MM-DD)
     - completion_date (fecha ISO, para filtro - formato YYYY-MM-DD)
-    - project_type (string, para embeddings)
+    - project_field (string, para embeddings)
     - value_contract (float, para filtro)
     - currency (string, para embeddings)
     - name_consultant (texto, para embeddings)

@@ -26,6 +26,7 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
         country,
         start_date,
         completion_date,
+        project_field,
         value_contract,
         client_name,
         description
@@ -160,7 +161,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         )
         SELECT 
             project_id, name_project, description, country,
-            start_date, completion_date, value_contract, client_name,
+            start_date, completion_date, project_field, value_contract, client_name,
             currency, 
             similarity_score
         FROM gold_table
@@ -174,7 +175,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         query = f"""
         SELECT 
             project_id, name_project, description, country,
-            start_date, completion_date, value_contract, client_name,
+            start_date, completion_date, project_field, value_contract, client_name,
             (1 - (embedding <=> %s::vector)) as similarity_score
         FROM gold_table
         WHERE (1 - (embedding <=> %s::vector)) >= {similarity_threshold}
@@ -190,7 +191,7 @@ def best_result_search_advanced(cursor, filters_list, embedding=None, limit=50, 
         query = """
         SELECT 
             project_id, name_project, description, country,
-            start_date, completion_date, value_contract, client_name
+            start_date, completion_date, project_field, value_contract, client_name
         FROM gold_table
         """
         

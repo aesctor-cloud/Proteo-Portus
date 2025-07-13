@@ -58,12 +58,12 @@ def handler(event, context):
                 """
 
                 # OPCIÓN 1: Función básica (por defecto)
-                # best_results, columns = best_result_search(cur, filters_list, embedding, limit=50)
+                best_results, columns = best_result_search(cur, filters_list, embedding, limit=50)
 
                 # OPCIÓN 2: Función avanzada (descomenta para usar)
-                best_results, columns = best_result_search_advanced(
-                    cur, filters_list, embedding, limit=50, similarity_threshold=0.7
-                )
+                # best_results, columns = best_result_search_advanced(
+                #     cur, filters_list, embedding, limit=50, similarity_threshold=0.7
+                # )
 
                 """
                 =============================================================================

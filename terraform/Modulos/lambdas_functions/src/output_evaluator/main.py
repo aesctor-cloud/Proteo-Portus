@@ -17,6 +17,7 @@ def format_projects(projects):
         project_id = p.get("project_id", "N/A")
         description = p.get("description", "Sin descripción")
         value_contract = p.get("value_contract", "N/D")
+        project_field = p.get("project_field", "N/D")
         dates = f"{p.get('start_date', 'N/D')} – {p.get('completion_date', 'N/D')}"
         currency = p.get("currency", "N/D")
         client_name = p.get("client_name", "N/D")
@@ -28,6 +29,7 @@ def format_projects(projects):
             f"● Presupuesto: {value_contract}\n"
             f"● Fechas: {dates}\n"
             f"● Moneda: {currency}\n"
+            f"● Campo del proyecto: {project_field}\n"
             f"● Cliente: {client_name}\n"
             f"● País: {country}\n"
             f"● Descripción: {description}\n"
@@ -73,6 +75,7 @@ RESPONDE SOLO con el resultado final, sin explicaciones intermedias ni razonamie
 ● Moneda: [moneda]  
 ● Cliente: [nombre]  
 ● País: [nombre]  
+● Campo del proyecto: [nombre]  
 ● Descripción: [breve descripción del proyecto]
 ○ [lista con viñetas]  
 🟢 / 🟡 / 🔴 Evaluación final con breve justificación.
