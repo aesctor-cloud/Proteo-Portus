@@ -3,7 +3,7 @@
 ############################
 resource "aws_security_group" "bastion_sg" {
   name        = "${var.instance_name}-sg"
-  description = "Bastion for SSM port‑forward to RDS"
+  description = "Bastion for SSM portforward to RDS"
   vpc_id      = var.vpc_id
 
   # Egress únicamente al SG de RDS en 5432
@@ -24,7 +24,7 @@ data "aws_ami" "al2023_arm" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-minimal-*-arm64"]
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
   }
 }
 
@@ -33,7 +33,7 @@ data "aws_ami" "al2023_arm" {
 ############################
 resource "aws_instance" "bastion" {
   ami                         = data.aws_ami.al2023_arm.id
-  instance_type               = "t4g.micro"
+  instance_type               = "t3.micro"
   subnet_id                   = var.private_subnet_id
   vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
   iam_instance_profile        = var.iam_profile
@@ -44,22 +44,3 @@ resource "aws_instance" "bastion" {
   }
 }
 
-############################
-# 4. Endpoints SSM
-############################
-resource "aws_vpc_endpoint" "ssm" {
-  for_each = toset([
-    "com.amazonaws.eu-west-1.ssm",
-    "com.amazonaws.eu-west-1.ssmmessages",
-    "com.amazonaws.eu-west-1.ec2messages"
-  ])
-
-  vpc_id             = var.vpc_id
-  service_name       = each.key
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = [var.private_subnet_id]
-  security_group_ids = [aws_security_group.bastion_sg.id]
-
-  private_dns_enabled = true
-  tags = { Name = "${var.instance_name}-${basename(each.key)}" }
-}

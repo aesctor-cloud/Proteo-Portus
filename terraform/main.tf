@@ -153,3 +153,14 @@ module "EventBridge"{
   depends_on = [ module.Step_Functions ]
 
 }
+
+module "Dbeaver_connection" {
+  source = "./Modulos/Dbeaver"
+  instance_name=var.instance_name
+  vpc_id=module.vpc_sg.vpc_id
+  rds_sg_id=module.vpc_sg.security_groups_rds
+  private_subnet_id=module.vpc_sg.subnet_a_id
+  iam_profile= var.iam_profile
+  depends_on = [module.rds]
+  
+}

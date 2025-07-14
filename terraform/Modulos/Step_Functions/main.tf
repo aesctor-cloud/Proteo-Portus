@@ -109,7 +109,7 @@ resource "aws_sfn_state_machine" "Raw_to_Gold_pipeline" {
             "OutputPath": "$.Payload",
             "Parameters": {
               "Payload.$": "$",
-              "FunctionName": "arn:aws:lambda:eu-west-1:084375571972:function:lambda_log:$LATEST"
+              "FunctionName": "arn:aws:lambda:eu-west-1:084375571972:function:error_logger:$LATEST"
             },
             "Retry": [
               {

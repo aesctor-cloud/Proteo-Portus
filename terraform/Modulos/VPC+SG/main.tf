@@ -142,6 +142,33 @@ resource "aws_vpc_endpoint" "BedrockAgent" {
   }
 }
 
+# Endpoints SSM
+resource "aws_vpc_endpoint" "ssm_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ssmmessages_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ec2messages_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ec2messages"
+  vpc_endpoint_type = "Interface"
+   subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+  private_dns_enabled = true
+}
 
 # VPC Endpoint para S3
 resource "aws_route_table" "private" {
