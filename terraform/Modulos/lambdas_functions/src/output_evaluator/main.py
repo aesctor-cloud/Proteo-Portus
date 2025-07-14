@@ -1,7 +1,6 @@
 import json
 import boto3
 import logging
-import re
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -11,32 +10,38 @@ bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")
 def format_projects(projects):
     lines = []
     for p in projects:
-        # Genera formato que incluya nombre, código (si tiene), valor, fechas, actividades, etc.
-        # Ajusta campos según tus datos reales:
+
         name_project = p.get("name_project", "Sin nombre")
         project_id = p.get("project_id", "N/A")
-        description = p.get("description", "Sin descripción")
         value_contract = p.get("value_contract", "N/D")
-        project_field = p.get("project_field", "N/D")
-        dates = f"{p.get('start_date', 'N/D')} – {p.get('completion_date', 'N/D')}"
+        start_date = p.get("start_date", "N/D")
+        completion_date = p.get("completion_date", "N/D")
         currency = p.get("currency", "N/D")
+        project_field = p.get("project_field", "N/D")
         client_name = p.get("client_name", "N/D")
         country = p.get("country", "N/D")
-
+        location = p.get("location", "N/D")
+        description = p.get("description", "Sin descripción")
+        name_consultant = p.get("name_consultant", "N/D")
 
         project_str = (
             f"[{name_project} ({project_id})]\n"
             f"● Presupuesto: {value_contract}\n"
-            f"● Fechas: {dates}\n"
+            f"● Fechas: {start_date} – {completion_date}\n"
             f"● Moneda: {currency}\n"
             f"● Campo del proyecto: {project_field}\n"
             f"● Cliente: {client_name}\n"
             f"● País: {country}\n"
-            f"● Descripción: {description}\n"
+            f"● Ubicación: {location}\n"
+            f"● Consultor: {name_consultant}\n"
+            f"● Descripción: {description.strip()}\n"
         )
+
         lines.append(project_str)
-        formatted_project = "\n\n".join(lines)
-        logger.info(f"Proyecto formateado: {formatted_project}")
+
+    formatted_project = "\n\n".join(lines)
+    logger.info(f"Proyecto formateado: {formatted_project}")
+
     return formatted_project
 
 def handler(event, context):
@@ -55,62 +60,63 @@ def handler(event, context):
         projects_formatted = format_projects(results)
 
         prompt = f"""
-Eres un analista experto que recibe esta consulta de usuario y una lista de proyectos candidatos. 
+        You are an expert project analyst. You receive:
+        - The original user query describing desired project characteristics.
+        - A list of filtered projects, preselected using structured filters and semantic embedding matching. Do NOT evaluate based on budget or date unless explicitly mentioned in the query.
 
-Consulta del usuario:
-"{user_prompt}"
+        User query:
+        "{user_prompt}"
 
-Lista de proyectos (ya filtrados por fecha y presupuesto, no es necesario evaluar esos campos):
+        Candidate projects:
+        {projects_formatted}
 
-{projects_formatted}
+        INSTRUCTIONS – respond ONLY with the final output, no explanations or reasoning.
 
-RESPONDE SOLO con el resultado final, sin explicaciones intermedias ni razonamientos visibles. 
+        1. For each project, provide a structured evaluation in the language of the user query, including:
+        - A summary of the project.
+        - A color emoji (🟢/🟡/🔴) reflecting overall fit to the query.
+        - If the query includes specific requirements (value, dates, country, etc.), format each project as:
 
-1. Para cada proyecto, provee un resumen detallado en el idioma de la consulta con un emoji (🟢/🟡/🔴) indicando si cumple con los requisitos.  
-   Si la consulta incluye criterios específicos (ej. valor, fechas), estructura cada resultado así:
+        [PROJECT NAME (ref code)]  
+        ● Value: [amount]  
+        ● Dates: [start – end]  
+        ● Currency: [currency code]  
+        ● Client: [client name]  
+        ● Country: [country name]  
+        ● Project Field: [field name]  
+        ● Description: [brief summary]  
+        ○ Key points as bullet list  
+        🟢 / 🟡 / 🔴 Final evaluation with concise justification.
 
-[PROYECTO (código referencia)]  
-● Presupuesto: [monto]  
-● Fechas: [inicio – fin]  
-● Moneda: [moneda]  
-● Cliente: [nombre]  
-● País: [nombre]  
-● Campo del proyecto: [nombre]  
-● Descripción: [breve descripción del proyecto]
-○ [lista con viñetas]  
-🟢 / 🟡 / 🔴 Evaluación final con breve justificación.
+        If the query is broad or only includes general requirements:
+        [PROJECT NAME]  
+        ● Match: ✅ / ❌  
+        ● Short summary.
 
-Si la consulta tiene solo un requisito:  
-[PROYECTO]  
-● Requisitos: ✅/❌  
-● Descripción breve.
+        2. Create a comparison table:
+        - Rows = Projects  
+        - Columns = Key inferred criteria from the query  
+        - Cell values:  
+        - ✅ = ≥70% match  
+        - ⚠️ = 30–69% match  
+        - ❌ = <30% match  
+        - Final column: “Meets Criteria?” with ✅ / ⚠️ / ❌
 
-2. Construye una tabla comparativa con:  
-- Filas = proyectos  
-- Columnas = requisitos clave inferidos de la consulta  
-- Celdas:  
-  - ✅ si el proyecto cumple al menos un 70% o más con el criterio  
-  - ⚠️ si cumple entre un 30% y menos de 70%  
-  - ❌ si cumple menos del 30%  
-- Última columna "¿Cumple criterios?" con ✅, ⚠️ o ❌  
+        3. Before the table, assign a qualitative relevance score:
+        🟢 High, 🟡 Moderate, 🔴 Low
 
-3. Antes de la tabla, asigna un score de relevancia cualitativo:  
-🟢 Alta, 🟡 Moderada, 🔴 Baja
+        4. Sort the table by relevance score (🟢 first)
 
-4. Ordena la tabla por relevancia (🟢 primero)
+        5. End with recommendations:
+        - ✅ Best candidates  
+        - ⚠️ Alternative candidates (with justification)  
+        - ❌ Not recommended
 
-5. Finaliza con recomendaciones claras:  
-- ✅ Mejores candidatos  
-- ⚠️ Candidatos alternativos con justificación  
-- ❌ Proyectos no recomendados
+        Do NOT generate intermediate steps or commentary. The reasoning must be embedded in your output structure.
 
-NO GENERES explicaciones ni pasos intermedios. Todo razonamiento debe quedar implícito en la respuesta.
-
-RESPONDE SÓLO con el resultado final.
-
-Proyectos:  
-{json.dumps(results, ensure_ascii=False)}
-"""
+        Projects JSON:
+        {json.dumps(results, ensure_ascii=False)}
+        """
         body = {
         "messages": [
             {"role": "user", "content": prompt}
@@ -133,15 +139,7 @@ Proyectos:
         model_output = response_body['content'][0]['text']
         logger.info(f"Raw model output: {model_output}")
 
-        # json_match = re.search(r'\{.*\}', model_output, re.DOTALL)
-        
-
-        # if not json_match:
-        #     logger.error("No se encontró JSON válido en la respuesta del modelo.")
-        #     raise ValueError("La respuesta del modelo no contiene un JSON válido.")
-
         try:
-            # parsed_json = json.loads(json_match.group())
             logger.info(f"Respuesta estructurada recibida: {model_output}")
             return {
             "llm_response": model_output
@@ -158,38 +156,3 @@ Proyectos:
             "details": str(e)
         }
     
-# if __name__ == "__main__":
-    # test_event = {
-    #     "body": json.dumps({
-    #         "user_prompt": "Busco proyectos con actividades de instalación de paneles solares, duración mayor a 6 meses y cliente multinacional.",
-    #         "top_projects": [
-    #             {
-    #                 "nombre": "Proyecto Sol A",
-    #                 "codigo": "PSA001",
-    #                 "valor": "5M USD",
-    #                 "fecha_inicio": "2023-01-01",
-    #                 "fecha_fin": "2023-12-31",
-    #                 "proporcion": "100%",
-    #                 "cliente": "SolarCorp",
-    #                 "pais": "Chile",
-    #                 "actividades": ["Instalación de paneles solares", "Mantenimiento"]
-    #             },
-    #             {
-    #                 "nombre": "Proyecto Viento B",
-    #                 "codigo": "PVB002",
-    #                 "valor": "3M USD",
-    #                 "fecha_inicio": "2023-03-01",
-    #                 "fecha_fin": "2023-08-01",
-    #                 "proporcion": "60%",
-    #                 "cliente": "WindGlobal",
-    #                 "pais": "Argentina",
-    #                 "actividades": ["Construcción de torres eólicas", "Instalación de cableado"]
-    #             }
-    #         ]
-    #     })
-    # }
-
-    # test_context = None
-
-    # result = reason_projects_handler(test_event, test_context)
-    # print(json.dumps(json.loads(result["body"]), ensure_ascii=False, indent=2))
