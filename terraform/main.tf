@@ -155,12 +155,10 @@ module "EventBridge"{
 }
 
 module "Dbeaver_connection" {
-  source = "./Modulos/Dbeaver"
-  instance_name=var.instance_name
+  source = "./Modulos/DBeaver"
   vpc_id=module.vpc_sg.vpc_id
-  rds_sg_id=module.vpc_sg.security_groups_rds
+  sg_ec2_bastion=module.vpc_sg.sg_ec2_bastion
   private_subnet_id=module.vpc_sg.subnet_a_id
   iam_profile= var.iam_profile
-  depends_on = [module.rds]
-  
+  depends_on = [module.rds, module.vpc_sg]
 }

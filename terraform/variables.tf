@@ -99,12 +99,6 @@ variable "path_to_dockerfile_output" {
   
 }
 
-variable "instance_name" {
-  description = "Name of the EC2 instance"
-  type        = string
-  
-}
-
 variable "iam_profile" {
   description = "IAM profile for Dbeaver connection"
   type        = string

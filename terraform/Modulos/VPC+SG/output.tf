@@ -21,3 +21,7 @@ output "security_group_lambda" {
 output "vpc_id" {
   value = aws_vpc.main.id
 }
+
+output "sg_ec2_bastion" {
+  value = aws_security_group.bastion_sg.id
+}
