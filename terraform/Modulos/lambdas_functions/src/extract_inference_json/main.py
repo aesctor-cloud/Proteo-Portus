@@ -18,15 +18,15 @@ def handler(event, context) -> dict:
 
     campos = """
     Available database fields are:
-    - project_field (string, for embeddings)
+    - project_field (string, for filters)
     - name_project (text, for embeddings)
-    - start_date (ISO date, for filter - format YYYY-MM-DD)
-    - completion_date (ISO date, for filter - format YYYY-MM-DD)
-    - country (string, for embeddings)
+    - start_date (ISO date, for filters - format YYYY-MM-DD)
+    - completion_date (ISO date, for filters - format YYYY-MM-DD)
+    - country (ISO 3166-1 alpha-3, for filters)
     - location (string, for embeddings)
     - client_name (text, for embeddings)
-    - value_contract (float, for filter)
-    - currency (string, for embeddings)
+    - value_contract (float, for filters)
+    - currency (ISO 4217, for filters)
     - name_consultant (text, for embeddings)
     - description (text, for embeddings)  
     """
