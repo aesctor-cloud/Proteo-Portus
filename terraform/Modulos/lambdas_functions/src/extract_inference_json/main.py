@@ -4,6 +4,11 @@ import json
 import re
 import logging
 
+from utils.country_utils import normalize_country
+from utils.currency_utils import normalize_currency_code
+from utils.number_utils import parse_value_input
+from utils.date_utils import normalize_date_to_iso
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -13,15 +18,15 @@ def handler(event, context) -> dict:
 
     campos = """
     Available database fields are:
-    - project_field (string, for embeddings)
+    - project_field (string, for filters)
     - name_project (text, for embeddings)
-    - start_date (ISO date, for filter - format YYYY-MM-DD)
-    - completion_date (ISO date, for filter - format YYYY-MM-DD)
-    - country (string, for embeddings)
+    - start_date (ISO date, for filters - format YYYY-MM-DD)
+    - completion_date (ISO date, for filters - format YYYY-MM-DD)
+    - country (ISO 3166-1 alpha-3, for filters)
     - location (string, for embeddings)
     - client_name (text, for embeddings)
-    - value_contract (float, for filter)
-    - currency (string, for embeddings)
+    - value_contract (float, for filters)
+    - currency (ISO 4217, for filters)
     - name_consultant (text, for embeddings)
     - description (text, for embeddings)  
     """
@@ -50,17 +55,36 @@ def handler(event, context) -> dict:
     
     VALIDATION RULES:
     - **filters**:
-        - Only use for numeric fields (`value_contract`) or date fields (`start_date`, `completion_date`).
-        - **Dates**: Must be in YYYY-MM-DD format only. If the year is not specified in the user prompt, use "N/A" for the filter value.
+        - Use only for the following fields:
+            - Numeric fields: `value_contract`
+            - Date fields: `start_date`, `completion_date`
+            - ISO fields:
+                - `country` (must be valid ISO 3166-1 alpha-3)
+                - `currency` (must be valid ISO 4217)
+            - Project field: `project_field`
+                - Allowed values:
+                    - `"energy"`
+                    - `"transport_planning_and_mobility"`
+                    - `"sustainability_and_environmental_assessment"`
+                - If the project type can be inferred from the user prompt, include it as a filter.
+                - If not enough context is provided to determine the type, do not include `project_field` in the filters.
+        - **Dates**: Must be in YYYY-MM-DD format only. If the year is not specified in the user prompt, use `"N/A"` for the filter value.
         - **Operators**: Use standard comparison operators (e.g., ">", "<", ">=", "<=", "=", "!=").
-        - **Values**: For `value_contract`, only digits, no symbols or letters.
+        - **Values**:
+            - `value_contract`: Only digits, no symbols or letters.
+            - `country`: Only valid ISO 3166-1 alpha-3 codes (e.g., "ESP", "USA", "FRA").
+            - `currency`: Only valid ISO 4217 codes (e.g., "EUR", "USD", "JPY").
+
         - If no suitable filters are found, the `filters` array must be empty `[]`.
+
     - **embedding_fields**:
         - Use for textual descriptions, project names, countries, locations, client names, project fields, currencies, and consultant names.
-        - **Do NOT include countries as filters**; they must go into `embedding_fields`.
         - If no relevant text for embeddings is found, use an empty string `""`.
+
     - **All fields mandatory**: The `filters` array and `embedding_fields` string must always be present in the JSON.
+
     - **Response language**: English only.
+
     - **No text outside JSON structure**.
 
     RESPONSE:
@@ -99,10 +123,31 @@ def handler(event, context) -> dict:
         result = FilterResult.model_validate(parsed_json)
         result_dict = result.model_dump()
         result_dict['prompt'] = user_prompt
-        logger.info(f"Respuesta estructurada recibida: {result}")
+
+        # Normalizar los valores de los filtros
+        normalized_filters = []
+        allowed_project_fields = {"energy", "transport_planning_and_mobility", "sustainability_and_environmental_assessment"}
+        for f in result_dict.get('filters', []):
+            field = f.get('field')
+            value = f.get('value')
+            normalized_value = value
+            if field == 'country':
+                normalized_value = normalize_country(value)
+            elif field == 'currency':
+                normalized_value = normalize_currency_code(value)
+            elif field == 'value_contract':
+                normalized_value = parse_value_input(value)
+            elif field in ('start_date', 'completion_date'):
+                normalized_value = normalize_date_to_iso(value)
+            elif field == 'project_field':
+                normalized_value = value.strip().lower() if isinstance(value, str) else value
+                if normalized_value not in allowed_project_fields:
+                    normalized_value = None
+            if normalized_value is not None:
+                normalized_filters.append({**f, 'value': normalized_value})
+        result_dict['filters'] = normalized_filters
+        logger.info(f"Respuesta estructurada recibida: {result_dict}")
         return result_dict
     except Exception as e:
         logger.exception("Error al parsear la respuesta del modelo.")
         raise ValueError(f"Error al validar el JSON: {str(e)}")
-
-    
