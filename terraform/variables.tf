@@ -98,3 +98,8 @@ variable "path_to_dockerfile_output" {
   type        = string
   
 }
+
+variable "iam_profile" {
+  description = "IAM profile for Dbeaver connection"
+  type        = string
+}

@@ -221,21 +221,21 @@ def create_and_insert_table(conn, data):
         cursor = conn.cursor()
         logger.info("Verificando existencia de tabla bronze_table...")
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS "bronze_table" (
-                "project_id" TEXT,
-                "name_project" TEXT,
-                "start_date" TEXT,
-                "completion_date" TEXT,
-                "country" TEXT,
-                "location" TEXT,
-                "client_name" TEXT,
-                "value_contract" TEXT,
-                "currency" TEXT,
-                "project_field" TEXT,
-                "name_consultant" TEXT,
-                "description" TEXT,
-                "source_file" TEXT,
-                "processing_timestamp" TIMESTAMP
+            CREATE TABLE IF NOT EXISTS bronze_table (
+                project_id TEXT PRIMARY KEY,
+                name_project TEXT,
+                start_date TEXT,
+                completion_date TEXT,
+                country TEXT,
+                location TEXT,
+                client_name TEXT,
+                value_contract TEXT,
+                currency TEXT,
+                project_field TEXT,
+                name_consultant TEXT,
+                description TEXT,
+                source_file TEXT,
+                processing_timestamp TIMESTAMP
             );
         ''')
 
@@ -251,10 +251,12 @@ def create_and_insert_table(conn, data):
                 INSERT INTO bronze_table ({', '.join(columns)})
                 VALUES ({', '.join(['%s'] * len(values))})
                 ON CONFLICT (project_id) DO UPDATE SET
+
                 {update_str};
             """, 
             values
             )
+
 
         conn.commit()
         logger.info(f"{len(data)} filas insertadas en bronze_table")

@@ -59,6 +59,28 @@ resource "aws_security_group" "lambda_sg" {
   }
 }
 
+# REGLAS SEPARADAS PARA EVITAR DEPENDENCIAS CIRCULARES
+resource "aws_security_group_rule" "rds_allow_lambda" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.lambda_sg.id
+  security_group_id        = aws_security_group.rds_sg.id
+  description              = "PostgreSQL from Lambda"
+
+}
+
+resource "aws_security_group_rule" "rds_allow_bastion" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.bastion_sg.id
+  security_group_id        = aws_security_group.rds_sg.id
+  description              = "PostgreSQL from Bastion"
+}
+
 # Security Group para RDS - SIN REFERENCIAS EN LÍNEA
 resource "aws_security_group" "rds_sg" {
   name        = "rds_sg"
@@ -94,27 +116,51 @@ resource "aws_security_group" "vpc_endpoint" {
   }
 }
 
-# REGLAS SEPARADAS PARA EVITAR DEPENDENCIAS CIRCULARES
-resource "aws_security_group_rule" "rds_allow_lambda" {
-  type                     = "ingress"
+# Security Group para SSM VPC Endpoint
+# Security Group para Bastion
+resource "aws_security_group" "bastion_sg" {
+  name        = "Proteo-Instance-Dbeaver-sg-v2"
+  description = "Bastion for SSM portforward to RDS"
+  vpc_id      = aws_vpc.main.id
+}
+
+# Egress a RDS
+resource "aws_security_group_rule" "bastion_to_rds" {
+  type                     = "egress"
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lambda_sg.id
-  security_group_id        = aws_security_group.rds_sg.id
-  description              = "PostgreSQL from Lambda"
-
+  security_group_id        = aws_security_group.bastion_sg.id
+  source_security_group_id = aws_security_group.rds_sg.id
+  description              = "Allow traffic to RDS"
 }
 
-# resource "aws_security_group_rule" "rds_allow_bastion" {
-#   type                     = "ingress"
-#   from_port                = 5432
-#   to_port                  = 5432
-#   protocol                 = "tcp"
-#   source_security_group_id = aws_security_group.bastion_sg.id
-#   security_group_id        = aws_security_group.rds_sg.id
-#   description              = "PostgreSQL from EC2 Bastion"
-# }
+# Egress a SSM VPC Endpoints
+resource "aws_security_group_rule" "bastion_to_ssm" {
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.bastion_sg.id
+  source_security_group_id = aws_security_group.ssm_vpce_sg.id
+  description              = "Allow traffic to SSM Endpoints"
+}
+
+# Security Group para SSM Endpoints
+resource "aws_security_group" "ssm_vpce_sg" {
+  name   = "ssm-vpce-sg"
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_security_group_rule" "ssm_allow_bastion" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ssm_vpce_sg.id
+  source_security_group_id = aws_security_group.bastion_sg.id
+  description              = "Allow Bastion EC2 to connect to SSM endpoint"
+}
 
 
 # VPC Endpoint para CloudWatch Logs
@@ -142,6 +188,33 @@ resource "aws_vpc_endpoint" "BedrockAgent" {
   }
 }
 
+# Endpoints SSM
+resource "aws_vpc_endpoint" "ssm_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.ssm_vpce_sg.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ssmmessages_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.ssm_vpce_sg.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ec2messages_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.eu-west-1.ec2messages"
+  vpc_endpoint_type = "Interface"
+   subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.ssm_vpce_sg.id]
+  private_dns_enabled = true
+}
 
 # VPC Endpoint para S3
 resource "aws_route_table" "private" {

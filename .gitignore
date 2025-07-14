@@ -29,15 +29,5 @@ __pycache__/
 *.tmp
 *.temp
 
-# Ignora todo en esta carpeta
-terraform/Modulos/lambdas_functions/src/data_validation/*
 
-# ¡Pero no ignores la carpeta en sí!
-!terraform/Modulos/lambdas_functions/src/data_validation/
-
-# Ni estos archivos
-!terraform/Modulos/lambdas_functions/src/data_validation/main.py
-!terraform/Modulos/lambdas_functions/src/data_validation/requirements.txt
-!terraform/Modulos/lambdas_functions/src/data_validation/database.py
-!terraform/Modulos/lambdas_functions/src/data_validation/validation.py
 

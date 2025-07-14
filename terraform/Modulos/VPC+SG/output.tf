@@ -17,3 +17,11 @@ output "subnet_b_id" {
 output "security_group_lambda" {
   value = aws_security_group.lambda_sg.id
 }
+
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "sg_ec2_bastion" {
+  value = aws_security_group.bastion_sg.id
+}
