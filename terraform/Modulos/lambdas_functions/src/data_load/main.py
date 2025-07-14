@@ -36,7 +36,7 @@ def insert_record(cursor, record):
         %(currency)s, %(project_field)s, %(name_consultant)s, %(description)s, %(processing_timestamp)s,
         %(normalization_timestamp)s, %(source_record_id)s, %(normalized_by_function)s
 
-    ) ON CONFLICT (project_id) UPDATE SET
+    ) ON CONFLICT (project_id) DO UPDATE SET
     name_project = EXCLUDED.name_project,
     start_date = EXCLUDED.start_date,
     completion_date = EXCLUDED.completion_date,

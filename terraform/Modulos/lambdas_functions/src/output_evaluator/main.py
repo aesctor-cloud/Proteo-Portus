@@ -59,6 +59,10 @@ def handler(event, context):
 
         projects_formatted = format_projects(results)
 
+        logger.info(f"Proyectos formateados: {projects_formatted}")
+
+        logger.info(f"results: {json.dumps(results, ensure_ascii=False)}")
+
         prompt = f"""
         You are an expert project analyst. You receive:
         - The original user query describing desired project characteristics.
@@ -75,10 +79,10 @@ def handler(event, context):
         1. For each project, provide a structured evaluation in the language of the user query, including:
         - A summary of the project.
         - A color emoji (🟢/🟡/🔴) reflecting overall fit to the query.
-        - If the query includes specific requirements (value, dates, country, etc.), format each project as:
+        - If the query includes specific requirements (budget, dates, country, etc.), format each project as:
 
         [PROJECT NAME (ref code)]  
-        ● Value: [amount]  
+        ● Budget: [float value]  
         ● Dates: [start – end]  
         ● Currency: [currency code]  
         ● Client: [client name]  
@@ -97,9 +101,9 @@ def handler(event, context):
         - Rows = Projects  
         - Columns = Key inferred criteria from the query  
         - Cell values:  
-        - ✅ = ≥70% match  
-        - ⚠️ = 30–69% match  
-        - ❌ = <30% match  
+        - ✅ = strong match  
+        - ⚠️ = not total match  
+        - ❌ = poor/no match  
         - Final column: “Meets Criteria?” with ✅ / ⚠️ / ❌
 
         3. Before the table, assign a qualitative relevance score:
@@ -109,7 +113,7 @@ def handler(event, context):
 
         5. End with recommendations:
         - ✅ Best candidates  
-        - ⚠️ Alternative candidates (with justification)  
+        - ⚠️ Posible candidates (with justification)  
         - ❌ Not recommended
 
         Do NOT generate intermediate steps or commentary. The reasoning must be embedded in your output structure.
@@ -127,7 +131,7 @@ def handler(event, context):
         }
 
         response = bedrock.invoke_model(
-        modelId="anthropic.claude-3-haiku-20240307-v1:0",
+        modelId="anthropic.claude-3-sonnet-20240229-v1:0",
         contentType="application/json",
         accept="application/json",
         body=json.dumps(body)

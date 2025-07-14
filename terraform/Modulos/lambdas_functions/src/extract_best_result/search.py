@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-def best_result_search(cursor, filters_list, embedding=None, limit=50):
+def best_result_search(cursor, filters_list, embedding, limit=50):
     """
     Busca proyectos combinando filtros SQL y búsqueda semántica con pgvector
     
@@ -19,6 +19,8 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
     
     # Query base con todas las columnas necesarias
     # Si se quire extraer todas las columnas, *
+    logger.info(f"Filtros utilizados: {filters_list}")
+    logger.info(f"Embedding utilizado: {embedding}")
     base_query = """
     SELECT 
         project_id,
@@ -28,6 +30,8 @@ def best_result_search(cursor, filters_list, embedding=None, limit=50):
         completion_date,
         project_field,
         value_contract,
+        currency,
+        location,
         client_name,
         description
     """

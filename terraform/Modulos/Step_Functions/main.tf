@@ -108,9 +108,12 @@ resource "aws_sfn_state_machine" "Raw_to_Gold_pipeline" {
             "Resource": "arn:aws:states:::lambda:invoke",
             "OutputPath": "$.Payload",
             "Parameters": {
-              "Payload.$": "$",
+              "Payload": {
+                "mensaje": "Registro inválido en validación",
+                "detalle.$": "$"
+              },
               "FunctionName": "arn:aws:lambda:eu-west-1:084375571972:function:error_logger:$LATEST"
-            },
+              },
             "Retry": [
               {
                 "ErrorEquals": [

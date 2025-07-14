@@ -13,9 +13,10 @@ def handler(event, context):
     """
     try:
         # Extraer user_prompt, filtros y embedding fields
-        user_prompt = event.get("prompt", "")
-        filters_list = event.get("filters", [])
-        embedding_text = event.get("embedding_fields", None)
+        
+        user_prompt = event["extract"]["Payload"].get("prompt", [])
+        filters_list = event["extract"]["Payload"].get("filters", [])
+        embedding_text = event["extract"]["Payload"].get("embedding_fields", "")
 
         # Generar embedding si se proporciona texto
         embedding = None
