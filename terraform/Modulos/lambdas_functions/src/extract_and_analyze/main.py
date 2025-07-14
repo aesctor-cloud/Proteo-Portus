@@ -243,12 +243,20 @@ def create_and_insert_table(conn, data):
             columns = list(row.keys())
             values = list(row.values())
             logger.info(f"Inserting row: {row}")
+
+            update_columns = [col for col in columns if col != "project_id"]
+            update_str = ", ".join([f'{col} = EXCLUDED.{col}' for col in update_columns])
+
             cursor.execute(f"""
                 INSERT INTO bronze_table ({', '.join(columns)})
                 VALUES ({', '.join(['%s'] * len(values))})
                 ON CONFLICT (project_id) DO UPDATE SET
-                {', '.join([f"{col} = EXCLUDED.{col}" for col in columns if col != "project_id"])}
-            """, values)
+
+                {update_str};
+            """, 
+            values
+            )
+
 
         conn.commit()
         logger.info(f"{len(data)} filas insertadas en bronze_table")
