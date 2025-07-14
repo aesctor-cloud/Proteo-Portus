@@ -60,7 +60,7 @@ def handler(event, context):
                 # OPCIÓN 1: Función básica (por defecto)
                 best_results, columns = best_result_search(cur, filters_list, embedding, limit=50)
 
-                # OPCIÓN 2: Función avanzada (descomenta para usar)
+                # OPCIÓN 2: Función avanzada (descomenta para usar) NO EN FUNCIONAMIENTO
                 # best_results, columns = best_result_search_advanced(
                 #     cur, filters_list, embedding, limit=50, similarity_threshold=0.7
                 # )
@@ -94,32 +94,3 @@ def handler(event, context):
             "message": "Error al procesar la solicitud de búsqueda de proyectos.",
             "details": str(e)
         }
-    
-# if __name__ == "__main__":
-#     # Pruebas con diferentes filtros y embeddings
-#     test_cases = [
-#         {
-#             "filters": [{"field": "budget", "operator": ">", "value": 100000}],
-#             "embedding_fields": "Proyectos de energía solar en España"
-#         },
-#         {
-#             "filters": [{"field": "start_date", "operator": "<", "value": "2024-03-01"}],
-#             "embedding_fields": "Proyectos ecológicos"
-#         },
-#         {
-#             "filters": [{"field": "location", "operator": "=", "value": "Francia"}],
-#             "embedding_fields": "Construcciones sostenibles iniciadas después de junio 2023"
-#         }
-#     ]
-    
-#     for i, test_case in enumerate(test_cases, 1):
-#         print(f"\n{'='*60}")
-#         print(f"PRUEBA {i}:")
-#         print(f"Filtros: {test_case['filters']}")
-#         print(f"Embedding Fields: {test_case['embedding_fields']}")
-#         print("-" * 60)
-        
-#         result = search_projects_handler({"body": json.dumps(test_case)}, None)
-#         body = result["body"]
-        
-#         print("Resultado:", body)

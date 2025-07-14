@@ -132,30 +132,39 @@ def analyze_with_bedrock(text: str, filename: str, first_folder: str) -> Dict[st
 
     try:
         prompt = f"""
-        Analiza el siguiente texto extraído de un documento y extrae la información según las siguientes columnas:
+        TASK: Extract project information from the following text.
 
-        Columnas requeridas: {', '.join(BRONZE_COLUMNS)}
+        Required columns: {', '.join(BRONZE_COLUMNS)}
 
-        Texto del documento:
+        INPUT TEXT:
         {text}
 
-        Por favor, extrae la información y devuelve un JSON con la siguiente estructura:
+        OUTPUT FORMAT: You must return EXACTLY this JSON structure with these exact field names:
+    
         {{
-            "name_project": "Nombre del proyecto",
-            "start_date": "Fecha de inicio (formato YYYY-MM-DD si está disponible)",
-            "completion_date": "Fecha de finalización (formato YYYY-MM-DD si está disponible)",
-            "country": "País del proyecto",
-            "location": "Ubicación específica",
-            "client_name": "Nombre del cliente",
-            "value_contract": "Valor del contrato (solo números)",
-            "currency": "Moneda del contrato",
-            "name_consultant": "Nombre del consultor",
-            "description": "Descripción del proyecto"
+            "name_project": "[PROJECT_NAME]",
+            "start_date": "[YYYY-MM-DD or N/A]",
+            "completion_date": "[YYYY-MM-DD or N/A]", 
+            "country": "[ISO_ALPHA_3_CODE]",
+            "location": "[LOCATION_IN_ENGLISH]",
+            "client_name": "[CLIENT_NAME]",
+            "value_contract": "[NUMBERS_ONLY]",
+            "currency": "[ISO_4217_CODE]",
+            "name_consultant": "[CONSULTANT_NAME]",
+            "description": "[DESCRIPTION]"
         }}
-
-        Si alguna información no está disponible en el texto, usa "N/A" para ese campo.
-        Asegúrate de que el JSON sea válido y que todos los campos estén presentes.
-        Devuelve únicamente un objeto JSON, sin ningún texto antes o después.
+        
+        VALIDATION RULES:
+        - location: City or place name in English, no additional formatting (e.g., "New York", "Madrid", "London")
+        - country: Must be ISO 3166-1 alpha-3 (USA, ESP, FRA, DEU, etc.)
+        - currency: Must be ISO 4217 (USD, EUR, GBP, etc.)
+        - value_contract: Only digits, no symbols or letters
+        - dates: YYYY-MM-DD format only
+        - All fields mandatory, use "N/A" if not found
+        - Response language: English only
+        - No text outside JSON structure
+        
+        RESPONSE:
         """
 
         bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")  
