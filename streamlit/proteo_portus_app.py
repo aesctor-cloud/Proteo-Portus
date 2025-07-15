@@ -431,6 +431,9 @@ st.markdown(f"""
 # Área de conversación - contenedor fijo con scroll
 conversation_html = '<div class="conversation-container" id="conversation-container">'
 
+# Print de depuración para ver los mensajes en el chat
+print("MENSAJES EN EL CHAT:", st.session_state.messages)
+
 if st.session_state.messages:
     for message in st.session_state.messages:
         role = "user" if message["role"] == "user" else "assistant"
