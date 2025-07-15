@@ -20,5 +20,6 @@ def get_default_field_mapping() -> Dict[str, List[str]]:
         "value_contract": ["value_contract", "valorProyecto", "value"],
         "description": ["description", "descripcion", "details"],
         "name_consultant": ["name_consultant", "consultant", "asesor"],
+        "source_file": ["source_file", "file_path", "ruta_archivo"],
         "processing_timestamp": ["processing_timestamp", "timestamp", "fecha_procesamiento"],
     }

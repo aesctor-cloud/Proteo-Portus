@@ -162,3 +162,21 @@ module "Dbeaver_connection" {
   iam_profile= var.iam_profile
   depends_on = [module.rds, module.vpc_sg]
 }
+
+module "streamlit" {
+  source = "./Modulos/Streamlit"
+  vpc_cidr = var.vpc_cidr
+  public_subnet_cidr = var.public_subnet_cidr
+  security_group_ingress_port = var.security_group_ingress_port
+  ec2_name = var.ec2_name
+  ami_id = var.ami_id
+  instance_type = var.instance_type
+  assign_elastic_ip = var.assign_elastic_ip
+  tags = var.tags
+  github_repo_url = var.github_repo_url
+  streamlit_folder = var.streamlit_folder
+  github_branch = var.github_branch
+  key_name = var.key_name
+  public_key_path = var.public_key_path
+  depends_on = [ module.Step_Functions ] 
+}

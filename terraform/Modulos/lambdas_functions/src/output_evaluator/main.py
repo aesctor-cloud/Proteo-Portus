@@ -19,6 +19,7 @@ def format_projects(projects):
         currency = p.get("currency", "N/D")
         project_field = p.get("project_field", "N/D")
         client_name = p.get("client_name", "N/D")
+        source_record_id = p.get("source_record_id", "N/D")
         country = p.get("country", "N/D")
         location = p.get("location", "N/D")
         description = p.get("description", "Sin descripción")
@@ -34,6 +35,7 @@ def format_projects(projects):
             f"● País: {country}\n"
             f"● Ubicación: {location}\n"
             f"● Consultor: {name_consultant}\n"
+            f"● Path de registro fuente: {source_record_id}\n"
             f"● Descripción: {description.strip()}\n"
         )
 
@@ -88,6 +90,8 @@ def handler(event, context):
         ● Client: [client name]  
         ● Country: [country name]  
         ● Project Field: [field name]  
+        ● Location: [location]
+        ● Path to source record: [source_record_id]
         ● Description: [brief summary]  
         ○ Key points as bullet list  
         🟢 / 🟡 / 🔴 Final evaluation with concise justification.
@@ -126,7 +130,7 @@ def handler(event, context):
             {"role": "user", "content": prompt}
         ],
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1000,
+        "max_tokens": 4000,
         "temperature": 0.2
         }
 
