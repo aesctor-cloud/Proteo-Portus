@@ -434,8 +434,10 @@ conversation_html = '<div class="conversation-container" id="conversation-contai
 # Print de depuración para ver los mensajes en el chat
 print("MENSAJES EN EL CHAT:", st.session_state.messages)
 
+print("MENSAJES EN EL CHAT PARA RENDERIZAR:", st.session_state.messages)
 if st.session_state.messages:
     for message in st.session_state.messages:
+        print("RENDERIZANDO MENSAJE:", message)
         role = "user" if message["role"] == "user" else "assistant"
         bubble_class = "message-bubble-user" if role == "user" else "message-bubble-assistant"
         conversation_html += (
@@ -454,6 +456,7 @@ else:
     </div>
     """
 conversation_html += '</div>'
+print("HTML FINAL DE CONVERSACION:", conversation_html)
 
 # CSS para separación y scroll
 st.markdown("""
