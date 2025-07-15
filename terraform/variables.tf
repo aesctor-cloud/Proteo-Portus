@@ -173,3 +173,9 @@ variable "public_key_path" {
   description = "Ruta al archivo de clave pública SSH"
   type        = string
 }
+
+variable "iam_profile_streamlit" {
+  description = "IAM profile for the Streamlit EC2 instance"
+  type        = string
+  
+}

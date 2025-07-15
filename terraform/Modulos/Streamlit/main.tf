@@ -62,6 +62,7 @@ resource "aws_instance" "streamlit-instance" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.streamlit-subnet.id
+  iam_instance_profile = var.iam_profile_streamlit
   vpc_security_group_ids      = [aws_security_group.streamlit-security-group.id]
   key_name                    = aws_key_pair.streamlit_key.key_name
   associate_public_ip_address = true
@@ -70,14 +71,14 @@ resource "aws_instance" "streamlit-instance" {
   user_data = <<-EOF
     #!/bin/bash
     sudo yum update -y
-    sudo yum install -y git python3 python3-pip
+    sudo yum install -y git python3-pip
     cd /home/ec2-user
-    git clone --branch ${var.github_branch} ${var.github_repo_url} repo
-    cd repo/${var.streamlit_folder}
-    pip3 install --upgrade pip
-    pip3 install -r requirements.txt
-    nohup streamlit run app_min.py --server.port=${var.security_group_ingress_port} --server.address=0.0.0.0 &
-  EOF
+    sudo git clone --branch dev https://github.com/aesctor-cloud/Proteo-Portus.git repo
+    cd repo/streamlit
+    sudo pip3 install --upgrade pip
+    sudo pip3 install -r requirements.txt
+    streamlit run proteo_portus_app.py 
+EOF
 }
  
 resource "aws_eip" "streamlit-eip" {
