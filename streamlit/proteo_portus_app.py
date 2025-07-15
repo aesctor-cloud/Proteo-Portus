@@ -540,7 +540,7 @@ def invoke_step_function_and_get_response(user_input):
     client = boto3.client('stepfunctions', region_name=AWS_REGION)
     response = client.start_execution(
         stateMachineArn=STEP_FUNCTION_ARN,
-        input=json.dumps({"mensaje": user_input})
+        input=json.dumps({"prompt": user_input})  # Cambiado de 'mensaje' a 'prompt'
     )
     execution_arn = response["executionArn"]
     while True:
