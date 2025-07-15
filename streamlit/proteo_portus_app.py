@@ -2,7 +2,8 @@ import streamlit as st
 import base64
 from datetime import datetime
 import boto3
- 
+ import json
+
 # Configuración de la página
 # Cargar favicon
 def load_favicon():
@@ -478,13 +479,24 @@ def generate_response(user_input):
     """Generar respuestas simples del asistente"""
     return "Gracias"
  
-def invoke_step_function(user_input):
-    client = boto3.client('stepfunctions', region_name=AWS_REGION)
-    response = client.start_execution(
+def invoke_step_function(user_input: str) -> str:
+    client = boto3.client("stepfunctions", region_name=AWS_REGION)
+    exec_arn = client.start_execution(
         stateMachineArn=STEP_FUNCTION_ARN,
-        input=f'{ {"mensaje": user_input} }'.replace("'", '"')
-    )
-    return response
+        input=json.dumps({"mensaje": user_input}),
+    )["executionArn"]
+
+    # Espera (máx. 30 s) a que termine
+    for _ in range(30):
+        desc = client.describe_execution(executionArn=exec_arn)
+        if desc["status"] == "SUCCEEDED":
+            output = json.loads(desc["output"])
+            return output["llm_response"]
+        elif desc["status"] in ("FAILED", "TIMED_OUT", "ABORTED"):
+            raise RuntimeError(f"Step Function terminó con estado {desc['status']}")
+        time.sleep(1)
+
+    raise TimeoutError("La ejecución tarda demasiado")
  
 # Input en la parte inferior - no fijo
 st.markdown("""
@@ -527,7 +539,10 @@ if submit_button and user_input.strip():
     except Exception as e:
         st.warning(f"Error al invocar Step Functions: {e}")
     # Generar respuesta
-    bot_response = generate_response(user_input)
+    try:
+        bot_response = invoke_step_function(user_input)
+    except Exception as e:
+        bot_response = f"⚠️ Error: {e}"
     # Agregar respuesta del bot
     st.session_state.messages.append({
         "role": "assistant",
