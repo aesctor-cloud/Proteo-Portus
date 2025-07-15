@@ -431,8 +431,13 @@ st.markdown(f"""
 # Área de conversación - contenedor fijo con scroll
 conversation_html = '<div class="conversation-container" id="conversation-container">'
 
+# Print de depuración para ver los mensajes en el chat
+print("MENSAJES EN EL CHAT:", st.session_state.messages)
+
+print("MENSAJES EN EL CHAT PARA RENDERIZAR:", st.session_state.messages)
 if st.session_state.messages:
     for message in st.session_state.messages:
+        print("RENDERIZANDO MENSAJE:", message)
         role = "user" if message["role"] == "user" else "assistant"
         bubble_class = "message-bubble-user" if role == "user" else "message-bubble-assistant"
         conversation_html += (
@@ -451,6 +456,7 @@ else:
     </div>
     """
 conversation_html += '</div>'
+print("HTML FINAL DE CONVERSACION:", conversation_html)
 
 # CSS para separación y scroll
 st.markdown("""
@@ -536,28 +542,48 @@ function toggleSidebar() {
 """, unsafe_allow_html=True)
 
 
-def invoke_step_function_and_get_response(user_input):
-    client = boto3.client('stepfunctions', region_name=AWS_REGION)
-    response = client.start_execution(
+# --- UNIFICACIÓN DE FLUJO DE CHAT Y STEP FUNCTIONS ---
+def call_step_function(prompt: str) -> str:
+    client = boto3.client("stepfunctions", region_name=AWS_REGION)
+    exec_arn = client.start_execution(
         stateMachineArn=STEP_FUNCTION_ARN,
-        input=json.dumps({"prompt": user_input})
-    )
-    execution_arn = response["executionArn"]
+        input=json.dumps({"prompt": prompt}),
+    )["executionArn"]
     while True:
-        desc = client.describe_execution(executionArn=execution_arn)
-        status = desc["status"]
-        if status in ["SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED"]:
+        desc = client.describe_execution(executionArn=exec_arn)
+        if desc["status"] in ("SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED"):
             break
         time.sleep(1)
-    if status == "SUCCEEDED":
-        output = json.loads(desc["output"])
-        print("OUTPUT COMPLETO:", output)  # Depuración
-        llm_response = output.get("evaluation", {}).get("Payload", {}).get("llm_response", "Sin respuesta")
-        print("LLM_RESPONSE:", llm_response)  # Depuración
-        llm_response = llm_response.replace('\n', '<br>')  # Para saltos de línea en HTML
-        return llm_response
-    else:
-        return f"Error: Step Function terminó con estado {status}"
+    if desc["status"] == "SUCCEEDED":
+        try:
+            out = json.loads(desc["output"])
+        except Exception as e:
+            return f"⚠️ Error al parsear la respuesta de Step Functions: {e}"
+        # Extracción robusta de llm_response
+        llm_response = None
+        try:
+            llm_response = out["evaluation"]["Payload"]["llm_response"]
+        except Exception:
+            pass
+        if llm_response and isinstance(llm_response, str) and llm_response.strip():
+            return llm_response
+        else:
+            return f"⚠️ Sin respuesta del modelo (llm_response no encontrado o vacío). Respuesta completa: {out}"
+    return f"⚠️ Error: {desc['status']}"
+
+# --- FLUJO PRINCIPAL DE ENVÍO DE MENSAJES ---
+def handle_send(user_msg: str):
+    ts = datetime.now().strftime("%H:%M")
+    st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": ts})
+    with st.spinner("Pensando…"):
+        try:
+            bot_msg = call_step_function(user_msg)
+        except Exception as e:
+            bot_msg = f"⚠️ Error al invocar Step Functions: {e}"
+    # Siempre añade el mensaje recibido, aunque sea error o advertencia
+    st.session_state.messages.append(
+        {"role": "assistant", "content": bot_msg.replace("\n", "<br>"), "timestamp": ts}
+    )
 
 st.markdown("""
 <style>
@@ -594,27 +620,17 @@ with st.form(key="chat_form", clear_on_submit=True):
     with col2:
         submit_button = st.form_submit_button("Enviar")
 
+if submit_button and user_input.strip():
+    st.session_state.pending_user_msg = user_input
+    st.experimental_rerun()
+
+# ---------- PROCESAR MENSAJE PENDIENTE ----------
+if "pending_user_msg" in st.session_state:
+    handle_send(st.session_state.pending_user_msg)
+    del st.session_state.pending_user_msg
+    st.experimental_rerun()
+
 st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-
-if submit_button and user_input.strip():
-    timestamp = datetime.now().strftime("%H:%M")
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "timestamp": timestamp
-    })
-    try:
-        bot_response = invoke_step_function_and_get_response(user_input)
-    except Exception as e:
-        bot_response = f"Error al invocar Step Functions: {e}"
-    # Añadir la respuesta como mensaje independiente
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": bot_response,
-        "timestamp": timestamp
-    })
-    st.rerun()
