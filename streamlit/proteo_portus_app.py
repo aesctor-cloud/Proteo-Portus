@@ -51,8 +51,6 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_agent" not in st.session_state:
     st.session_state.current_agent = "Proteo Portus"
-if "ready_to_render" not in st.session_state:
-    st.session_state.ready_to_render = False
 
 # CSS personalizado
 
@@ -437,7 +435,7 @@ conversation_html = '<div class="conversation-container" id="conversation-contai
 print("MENSAJES EN EL CHAT:", st.session_state.messages)
 
 print("MENSAJES EN EL CHAT PARA RENDERIZAR:", st.session_state.messages)
-if st.session_state.ready_to_render and st.session_state.messages:
+if st.session_state.messages:
     for message in st.session_state.messages:
         print("RENDERIZANDO MENSAJE:", message)
         role = "user" if message["role"] == "user" else "assistant"
@@ -544,7 +542,7 @@ function toggleSidebar() {
 """, unsafe_allow_html=True)
 
 
-def invoke_step_function_and_get_response(user_input):
+def invoke_step_function_and_get_response(user_input, timestamp):
     client = boto3.client('stepfunctions', region_name=AWS_REGION)
     response = client.start_execution(
         stateMachineArn=STEP_FUNCTION_ARN,
@@ -560,10 +558,13 @@ def invoke_step_function_and_get_response(user_input):
     if status == "SUCCEEDED":
         output = json.loads(desc["output"])
         print("OUTPUT COMPLETO:", output)  # Depuración
-        st.session_state.ready_to_render = True
         llm_response = output.get("evaluation", {}).get("Payload", {}).get("llm_response", "Sin respuesta")
-        print("LLM_RESPONSE:", llm_response)  # Depuración
         llm_response = llm_response.replace('\n', '<br>')  # Para saltos de línea en HTML
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": llm_response,
+            "timestamp": timestamp
+        })
         return llm_response
     else:
         return f"Error: Step Function terminó con estado {status}"
@@ -616,14 +617,8 @@ if submit_button and user_input.strip():
         "content": user_input,
         "timestamp": timestamp
     })
-    st.session_state.ready_to_render = False
     try:
-        bot_response = invoke_step_function_and_get_response(user_input)
+        bot_response = invoke_step_function_and_get_response(user_input, timestamp)
     except Exception as e:
         bot_response = f"Error al invocar Step Functions: {e}"
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": bot_response,
-        "timestamp": timestamp
-    })
     print("MENSAJES EN EL CHAT DESPUÉS DE APPEND ASSISTANT:", st.session_state.messages)
