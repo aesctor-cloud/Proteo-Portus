@@ -2,7 +2,7 @@ import streamlit as st
 import base64
 from datetime import datetime
 import boto3
- import json
+import json
 
 # Configuración de la página
 # Cargar favicon
