@@ -607,20 +607,8 @@ st.markdown("""
 
 
 if submit_button and user_input.strip():
-    timestamp = datetime.now().strftime("%H:%M")
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "timestamp": timestamp
-    })
     try:
         bot_response = invoke_step_function_and_get_response(user_input)
     except Exception as e:
         bot_response = f"Error al invocar Step Functions: {e}"
-    # Añadir la respuesta como mensaje independiente
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": bot_response,
-        "timestamp": timestamp
-    })
-    print("MENSAJES EN EL CHAT DESPUÉS DE APPEND ASSISTANT:", st.session_state.messages)
+    st.markdown(bot_response, unsafe_allow_html=True)
