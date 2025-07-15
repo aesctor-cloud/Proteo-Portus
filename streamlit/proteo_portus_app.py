@@ -3,7 +3,8 @@ import base64
 from datetime import datetime
 import boto3
 import json
-
+import time
+ 
 # Configuración de la página
 # Cargar favicon
 def load_favicon():
@@ -24,8 +25,8 @@ st.set_page_config(
 )
  
 # Configuración de Step Functions
-STEP_FUNCTION_ARN = "arn:aws:states:eu-west-1:084375571972:stateMachine:Search_and_Evaluate_pipeline"  # <-- Cambia esto
-AWS_REGION = "eu-west-1"  # <-- Cambia esto si es necesario
+STEP_FUNCTION_ARN = "arn:aws:states:eu-west-1:084375571972:stateMachine:Search_and_Evaluate_pipeline"
+AWS_REGION = "eu-west-1"
  
 # Cargar imágenes
 def load_logo():
@@ -428,31 +429,92 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
  
 # Área de conversación - contenedor fijo con scroll
-conversation_html = '<div class="conversation-container">'
+conversation_html = '<div class="conversation-container" id="conversation-container">'
  
 if st.session_state.messages:
-    # Generar mensajes
     for message in st.session_state.messages:
         role = "user" if message["role"] == "user" else "assistant"
-        content = message["content"]  
-        conversation_html += f"""
-        <div class="message {role}">
-            <div class="message-bubble">
-                {content}
-            </div>
-            <div class="message-time">{message["timestamp"]}</div>
-        </div>
-        """
+        bubble_class = "message-bubble-user" if role == "user" else "message-bubble-assistant"
+        conversation_html += (
+            f'<div class="message {role}">'  # Mensaje independiente
+            f'<div class="{bubble_class}">'  # Burbuja según rol
+            f'{message["content"]}'
+            f'</div>'
+            f'<div class="message-time">{message["timestamp"]}</div>'
+            f'</div>'
+        )
 else:
-    # Mensaje de bienvenida
     conversation_html += """
     <div class="welcome-prompt">
         <div class="welcome-text">¿Cómo te puedo ayudar?</div>
         <div class="welcome-subtext">Pregúntame sobre análisis de proyectos y criterios de selección</div>
     </div>
     """
- 
 conversation_html += '</div>'
+ 
+# CSS para separación y scroll
+st.markdown("""
+<style>
+.message {
+    margin-bottom: 18px;
+}
+.conversation-container {
+    min-height: 400px;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    padding: 20px;
+    background-color: white;
+    margin-top: 200px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-gray);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+</style>
+""", unsafe_allow_html=True)
+ 
+# Scroll automático al final de la conversación
+st.markdown("""
+<script>
+window.onload = function() {
+    var objDiv = document.getElementById('conversation-container');
+    if(objDiv){ objDiv.scrollTop = objDiv.scrollHeight; }
+}
+</script>
+""", unsafe_allow_html=True)
+ 
+# CSS para los bubbles de usuario (rojo) y assistant (gris)
+st.markdown("""
+<style>
+.message-bubble-user {
+    display: inline-block;
+    max-width: 70%;
+    padding: 15px 20px;
+    border-radius: 20px;
+    word-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.4;
+    position: relative;
+    background-color: #a30000;
+    color: white;
+    margin-left: 30%;
+}
+.message-bubble-assistant {
+    display: inline-block;
+    max-width: 70%;
+    padding: 15px 20px;
+    border-radius: 20px;
+    word-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.4;
+    position: relative;
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    margin-right: 30%;
+}
+</style>
+""", unsafe_allow_html=True)
+ 
 st.markdown(conversation_html, unsafe_allow_html=True)
  
 # JavaScript para el toggle del sidebar
@@ -473,40 +535,52 @@ function toggleSidebar() {
 </script>
 """, unsafe_allow_html=True)
  
-# Función para generar respuestas
-def generate_response(user_input):
-    """Generar respuestas simples del asistente"""
-    return "Gracias"
  
-def invoke_step_function(user_input: str) -> str:
-    client = boto3.client("stepfunctions", region_name=AWS_REGION)
-    exec_arn = client.start_execution(
+def invoke_step_function_and_get_response(user_input):
+    client = boto3.client('stepfunctions', region_name=AWS_REGION)
+    response = client.start_execution(
         stateMachineArn=STEP_FUNCTION_ARN,
-        input=json.dumps({"mensaje": user_input}),
-    )["executionArn"]
-
-    # Espera (máx. 30 s) a que termine
-    for _ in range(30):
-        desc = client.describe_execution(executionArn=exec_arn)
-        if desc["status"] == "SUCCEEDED":
-            output = json.loads(desc["output"])
-            return output["llm_response"]
-        elif desc["status"] in ("FAILED", "TIMED_OUT", "ABORTED"):
-            raise RuntimeError(f"Step Function terminó con estado {desc['status']}")
+        input=json.dumps({"mensaje": user_input})
+    )
+    execution_arn = response["executionArn"]
+    while True:
+        desc = client.describe_execution(executionArn=execution_arn)
+        status = desc["status"]
+        if status in ["SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED"]:
+            break
         time.sleep(1)
-
-    raise TimeoutError("La ejecución tarda demasiado")
+    if status == "SUCCEEDED":
+        output = json.loads(desc["output"])
+        llm_response = output.get("evaluation", {}).get("Payload", {}).get("llm_response", "Sin respuesta")
+        return llm_response
+    else:
+        return f"Error: Step Function terminó con estado {status}"
  
-# Input en la parte inferior - no fijo
 st.markdown("""
-<div class="input-container">
+<style>
+.input-container-fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    background: white;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+    padding: 20px 0 10px 0;
+}
+@media (max-width: 768px) {
+    .input-container-fixed {
+        padding: 10px 0 5px 0;
+    }
+}
+</style>
+<div class="input-container-fixed">
     <div class="input-form">
 """, unsafe_allow_html=True)
  
-# Formulario de entrada
 with st.form(key="chat_form", clear_on_submit=True):
     col1, col2 = st.columns([6, 1])
-   
     with col1:
         user_input = st.text_input(
             "Mensaje",
@@ -514,7 +588,6 @@ with st.form(key="chat_form", clear_on_submit=True):
             label_visibility="collapsed",
             key="user_message"
         )
-   
     with col2:
         submit_button = st.form_submit_button("Enviar")
  
@@ -523,7 +596,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
  
-# Procesar mensaje
+ 
 if submit_button and user_input.strip():
     timestamp = datetime.now().strftime("%H:%M")
     # Agregar mensaje del usuario
@@ -532,17 +605,12 @@ if submit_button and user_input.strip():
         "content": user_input,
         "timestamp": timestamp
     })
-    # Invocar Step Functions
+   
     try:
-        invoke_step_function(user_input)
+        bot_response = invoke_step_function_and_get_response(user_input)
     except Exception as e:
-        st.warning(f"Error al invocar Step Functions: {e}")
-    # Generar respuesta
-    try:
-        bot_response = invoke_step_function(user_input)
-    except Exception as e:
-        bot_response = f"⚠️ Error: {e}"
-    # Agregar respuesta del bot
+        bot_response = f"Error al invocar Step Functions: {e}"
+   
     st.session_state.messages.append({
         "role": "assistant",
         "content": bot_response,

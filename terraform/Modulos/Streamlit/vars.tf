@@ -67,3 +67,9 @@ variable "public_key_path" {
   description = "Ruta al archivo de clave pública SSH"
   type        = string
 }
+
+variable "iam_profile_streamlit" {
+  description = "Perfil IAM para la instancia Streamlit"
+  type        = string
+  
+}

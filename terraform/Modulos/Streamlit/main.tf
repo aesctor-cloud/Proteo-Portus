@@ -62,6 +62,7 @@ resource "aws_instance" "streamlit-instance" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.streamlit-subnet.id
+  iam_instance_profile = var.iam_profile_streamlit
   vpc_security_group_ids      = [aws_security_group.streamlit-security-group.id]
   key_name                    = aws_key_pair.streamlit_key.key_name
   associate_public_ip_address = true

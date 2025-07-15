@@ -178,5 +178,6 @@ module "streamlit" {
   github_branch = var.github_branch
   key_name = var.key_name
   public_key_path = var.public_key_path
+  iam_profile_streamlit = var.iam_profile_streamlit
   depends_on = [ module.Step_Functions ] 
 }
