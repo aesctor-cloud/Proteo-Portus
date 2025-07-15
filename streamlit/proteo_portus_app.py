@@ -621,4 +621,3 @@ if submit_button and user_input.strip():
         "timestamp": timestamp
     })
     print("MENSAJES EN EL CHAT DESPUÉS DE APPEND ASSISTANT:", st.session_state.messages)
-    st.rerun()
