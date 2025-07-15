@@ -434,8 +434,7 @@ if st.session_state.messages:
     # Generar mensajes
     for message in st.session_state.messages:
         role = "user" if message["role"] == "user" else "assistant"
-        # Mostrar "Gracias" para todas las respuestas del asistente
-        content = message["content"] if role == "user" else "Gracias"
+        content = message["content"]  
         conversation_html += f"""
         <div class="message {role}">
             <div class="message-bubble">
