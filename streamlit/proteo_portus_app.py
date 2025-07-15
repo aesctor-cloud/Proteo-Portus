@@ -568,7 +568,7 @@ def call_step_function(prompt: str) -> str:
         if llm_response and isinstance(llm_response, str) and llm_response.strip():
             return llm_response
         else:
-            return f"⚠️ Sin respuesta del modelo (llm_response no encontrado o vacío). Respuesta completa: {out}"
+            return "No hay proyectos"
     return f"⚠️ Error: {desc['status']}"
 
 # --- FLUJO PRINCIPAL DE ENVÍO DE MENSAJES ---
