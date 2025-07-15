@@ -566,14 +566,20 @@ def invoke_step_function_and_get_response(user_input):
 
 def handle_send(user_msg: str):
     ts = datetime.now().strftime("%H:%M")
+    print("[DEBUG] APPEND USUARIO:", {"role": "user", "content": user_msg, "timestamp": ts})
     st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": ts})
+    print("[DEBUG] MENSAJES EN EL CHAT TRAS APPEND USUARIO:", st.session_state.messages)
     with st.spinner("Pensando…"):
         try:
+            print("[DEBUG] ANTES DE LLAMAR A STEP FUNCTIONS")
             bot_msg = invoke_step_function_and_get_response(user_msg)
+            print("[DEBUG] RESPUESTA DE STEP FUNCTIONS:", bot_msg)
         except Exception as e:
             bot_msg = f"⚠️ Error al invocar Step Functions: {e}"
+            print("[DEBUG] ERROR AL LLAMAR A STEP FUNCTIONS:", e)
+    print("[DEBUG] APPEND BOT:", {"role": "assistant", "content": bot_msg, "timestamp": ts})
     st.session_state.messages.append({"role": "assistant", "content": bot_msg, "timestamp": ts})
-    print("MENSAJE DEL BOT AÑADIDO:", {"role": "assistant", "content": bot_msg, "timestamp": ts})
+    print("[DEBUG] MENSAJES EN EL CHAT TRAS APPEND BOT:", st.session_state.messages)
 
 st.markdown("""
 <style>
