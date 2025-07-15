@@ -555,12 +555,20 @@ def call_step_function(prompt: str) -> str:
             break
         time.sleep(1)
     if desc["status"] == "SUCCEEDED":
-        out = json.loads(desc["output"])
-        return (
-            out.get("evaluation", {})
-            .get("Payload", {})
-            .get("llm_response", "Sin respuesta")
-        )
+        try:
+            out = json.loads(desc["output"])
+        except Exception as e:
+            return f"⚠️ Error al parsear la respuesta de Step Functions: {e}"
+        # Extracción robusta de llm_response
+        llm_response = None
+        try:
+            llm_response = out["evaluation"]["Payload"]["llm_response"]
+        except Exception:
+            pass
+        if llm_response and isinstance(llm_response, str) and llm_response.strip():
+            return llm_response
+        else:
+            return f"⚠️ Sin respuesta del modelo (llm_response no encontrado o vacío). Respuesta completa: {out}"
     return f"⚠️ Error: {desc['status']}"
 
 # --- FLUJO PRINCIPAL DE ENVÍO DE MENSAJES ---
@@ -572,6 +580,7 @@ def handle_send(user_msg: str):
             bot_msg = call_step_function(user_msg)
         except Exception as e:
             bot_msg = f"⚠️ Error al invocar Step Functions: {e}"
+    # Siempre añade el mensaje recibido, aunque sea error o advertencia
     st.session_state.messages.append(
         {"role": "assistant", "content": bot_msg.replace("\n", "<br>"), "timestamp": ts}
     )
@@ -612,7 +621,13 @@ with st.form(key="chat_form", clear_on_submit=True):
         submit_button = st.form_submit_button("Enviar")
 
 if submit_button and user_input.strip():
-    handle_send(user_input)
+    st.session_state.pending_user_msg = user_input
+    st.experimental_rerun()
+
+# ---------- PROCESAR MENSAJE PENDIENTE ----------
+if "pending_user_msg" in st.session_state:
+    handle_send(st.session_state.pending_user_msg)
+    del st.session_state.pending_user_msg
     st.experimental_rerun()
 
 st.markdown("""
