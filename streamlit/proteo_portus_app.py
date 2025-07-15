@@ -564,6 +564,17 @@ def invoke_step_function_and_get_response(user_input):
     else:
         return f"Error: Step Function terminó con estado {status}"
 
+def handle_send(user_msg: str):
+    ts = datetime.now().strftime("%H:%M")
+    st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": ts})
+    with st.spinner("Pensando…"):
+        try:
+            bot_msg = invoke_step_function_and_get_response(user_msg)
+        except Exception as e:
+            bot_msg = f"⚠️ Error al invocar Step Functions: {e}"
+    st.session_state.messages.append({"role": "assistant", "content": bot_msg, "timestamp": ts})
+    st.experimental_rerun()
+
 st.markdown("""
 <style>
 .input-container-fixed {
@@ -606,19 +617,4 @@ st.markdown("""
 
 
 if submit_button and user_input.strip():
-    timestamp = datetime.now().strftime("%H:%M")
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "timestamp": timestamp
-    })
-    try:
-        bot_response = invoke_step_function_and_get_response(user_input)
-    except Exception as e:
-        bot_response = f"Error al invocar Step Functions: {e}"
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": bot_response,
-        "timestamp": timestamp
-    })
-    print("MENSAJES EN EL CHAT DESPUÉS DE APPEND ASSISTANT:", st.session_state.messages)
+    handle_send(user_input)
