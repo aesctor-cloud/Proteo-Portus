@@ -57,7 +57,7 @@ def insert_record(cursor, record):
     values = {
         **record,
         "normalization_timestamp": metadata.get("normalization_timestamp"),
-        "source_record_id": metadata.get("source_record_id"),
+        "source_record_id": record.get("source_file"),
         "normalized_by_function": metadata.get("normalized_by_function"),
 
     }

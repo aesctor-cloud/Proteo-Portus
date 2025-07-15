@@ -17,6 +17,7 @@ class ProjectRaw(BaseModel):
     currency: Optional[str]
     name_consultant: Optional[str]
     description: Optional[str]
+    source_file: Optional[str]
     processing_timestamp: Optional[datetime] 
 
     @validator('project_id', 'name_project', pre=True)

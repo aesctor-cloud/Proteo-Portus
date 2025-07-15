@@ -174,7 +174,7 @@ def analyze_with_bedrock(text: str, filename: str, first_folder: str) -> Dict[st
                 {"role": "user", "content": prompt}
             ],
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1000,
+            "max_tokens": 10000,
             "temperature": 0.2
         }
         logger.info(f"Enviando solicitud a Bedrock...{body}")

@@ -33,6 +33,7 @@ def best_result_search(cursor, filters_list, embedding, limit=50):
         currency,
         location,
         client_name,
+        source_record_id,
         description
     """
     
