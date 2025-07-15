@@ -573,6 +573,7 @@ def handle_send(user_msg: str):
         except Exception as e:
             bot_msg = f"⚠️ Error al invocar Step Functions: {e}"
     st.session_state.messages.append({"role": "assistant", "content": bot_msg, "timestamp": ts})
+    print("MENSAJE DEL BOT AÑADIDO:", {"role": "assistant", "content": bot_msg, "timestamp": ts})
 
 st.markdown("""
 <style>
