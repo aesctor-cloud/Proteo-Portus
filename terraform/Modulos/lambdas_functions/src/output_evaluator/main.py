@@ -68,7 +68,7 @@ def handler(event, context):
         prompt = f"""
         You are an expert project analyst. You receive:
         - The original user query describing desired project characteristics.
-        - A list of filtered projects, preselected using structured filters and semantic embedding matching. Do NOT evaluate based on budget or date unless explicitly mentioned in the query.
+        - A list of filtered projects, preselected using structured filters and semantic embedding matching. Do NOT evaluate based on budget, date or type and field of project unless explicitly mentioned in the query.
 
         User query:
         "{user_prompt}"
